@@ -3,7 +3,7 @@ import type {
   PrototypeState, Question, Test, Package, Order, Coupon, Entitlement,
   Student, SupportRequest, NotificationCampaign, AuditEntry, EntityType,
   StudentNote, SupportComment, GeneratedBatch, TestDraft, BrandingSettings, PrototypeSettings,
-  SavedView,
+  SavedView, QuestionVersion, SimilarityResult, GenerationRecipe, ReviewComment,
 } from './types';
 import {
   loadState, saveState, createDefaultState, createAuditEntry,
@@ -40,7 +40,16 @@ type Action =
   | { type: 'ADD_SAVED_VIEW'; view: SavedView; audit?: AuditEntry }
   | { type: 'UPDATE_SAVED_VIEW'; view: SavedView; audit?: AuditEntry }
   | { type: 'DELETE_SAVED_VIEW'; id: string; audit?: AuditEntry }
-  | { type: 'SET_DEFAULT_SAVED_VIEW'; page: string; id: string; audit?: AuditEntry };
+  | { type: 'SET_DEFAULT_SAVED_VIEW'; page: string; id: string; audit?: AuditEntry }
+  | { type: 'ADD_QUESTION_VERSION'; questionId: string; version: QuestionVersion; audit?: AuditEntry }
+  | { type: 'RESTORE_QUESTION_VERSION'; questionId: string; versionId: string; audit?: AuditEntry }
+  | { type: 'SET_SIMILARITY_RESULTS'; results: SimilarityResult[]; audit?: AuditEntry }
+  | { type: 'UPDATE_SIMILARITY_RESULT'; result: SimilarityResult; audit?: AuditEntry }
+  | { type: 'ADD_RECIPE'; recipe: GenerationRecipe; audit?: AuditEntry }
+  | { type: 'UPDATE_RECIPE'; recipe: GenerationRecipe; audit?: AuditEntry }
+  | { type: 'DELETE_RECIPE'; id: string; audit?: AuditEntry }
+  | { type: 'ADD_REVIEW_COMMENT'; questionId: string; comment: ReviewComment }
+  | { type: 'SET_BATCH_STATUS'; batchId: string; status: GeneratedBatch['status']; audit?: AuditEntry };
 
 function reducer(state: PrototypeState, action: Action): PrototypeState {
   switch (action.type) {
@@ -212,6 +221,65 @@ function reducer(state: PrototypeState, action: Action): PrototypeState {
       return { ...state, savedViews };
     }
 
+    case 'ADD_QUESTION_VERSION': {
+      const existing = state.questionVersions[action.questionId] ?? [];
+      const versions = [action.version, ...existing];
+      return { ...state, questionVersions: { ...state.questionVersions, [action.questionId]: versions } };
+    }
+
+    case 'RESTORE_QUESTION_VERSION': {
+      const versions = state.questionVersions[action.questionId] ?? [];
+      const target = versions.find((v) => v.id === action.versionId);
+      if (!target) return state;
+      const questions = state.questions.map((q) =>
+        q.id === action.questionId ? { ...target.snapshot, updatedAt: new Date().toISOString().slice(0, 10) } : q
+      );
+      return { ...state, questions };
+    }
+
+    case 'SET_SIMILARITY_RESULTS': {
+      return { ...state, similarityResults: action.results };
+    }
+
+    case 'UPDATE_SIMILARITY_RESULT': {
+      const similarityResults = state.similarityResults.map((r) =>
+        r.id === action.result.id ? action.result : r
+      );
+      return { ...state, similarityResults };
+    }
+
+    case 'ADD_RECIPE': {
+      return { ...state, generationRecipes: [action.recipe, ...state.generationRecipes] };
+    }
+
+    case 'UPDATE_RECIPE': {
+      const generationRecipes = state.generationRecipes.map((r) =>
+        r.id === action.recipe.id ? action.recipe : r
+      );
+      return { ...state, generationRecipes };
+    }
+
+    case 'DELETE_RECIPE': {
+      const generationRecipes = state.generationRecipes.filter((r) => r.id !== action.id);
+      return { ...state, generationRecipes };
+    }
+
+    case 'ADD_REVIEW_COMMENT':
+      return {
+        ...state,
+        reviewComments: {
+          ...state.reviewComments,
+          [action.questionId]: [...(state.reviewComments[action.questionId] ?? []), action.comment],
+        },
+      };
+
+    case 'SET_BATCH_STATUS': {
+      const generatedBatches = state.generatedBatches.map((b) =>
+        b.id === action.batchId ? { ...b, status: action.status } : b
+      );
+      return { ...state, generatedBatches };
+    }
+
     default:
       return state;
   }
@@ -236,6 +304,15 @@ interface StoreContextValue {
   updateSavedView: (view: SavedView) => void;
   deleteSavedView: (id: string) => void;
   setDefaultSavedView: (page: string, id: string) => void;
+  addQuestionVersion: (questionId: string, version: QuestionVersion) => void;
+  restoreQuestionVersion: (questionId: string, versionId: string) => void;
+  setSimilarityResults: (results: SimilarityResult[]) => void;
+  updateSimilarityResult: (result: SimilarityResult) => void;
+  addRecipe: (recipe: GenerationRecipe) => void;
+  updateRecipe: (recipe: GenerationRecipe) => void;
+  deleteRecipe: (id: string) => void;
+  addReviewComment: (questionId: string, comment: ReviewComment) => void;
+  setBatchStatus: (batchId: string, status: GeneratedBatch['status']) => void;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -322,6 +399,49 @@ export function PrototypeStoreProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_DEFAULT_SAVED_VIEW', page, id, audit: entry });
   }, [audit]);
 
+  const addQuestionVersion = useCallback((questionId: string, version: QuestionVersion) => {
+    const entry = audit('VERSION_CREATED', 'question', questionId, `v${version.versionNumber}`, '', `v${version.versionNumber}`, `Version ${version.versionNumber} created for ${questionId}`);
+    dispatch({ type: 'ADD_QUESTION_VERSION', questionId, version, audit: entry });
+  }, [audit]);
+
+  const restoreQuestionVersion = useCallback((questionId: string, versionId: string) => {
+    const entry = audit('VERSION_RESTORED', 'question', questionId, versionId, '', versionId, `Version restored for ${questionId}`);
+    dispatch({ type: 'RESTORE_QUESTION_VERSION', questionId, versionId, audit: entry });
+  }, [audit]);
+
+  const setSimilarityResults = useCallback((results: SimilarityResult[]) => {
+    dispatch({ type: 'SET_SIMILARITY_RESULTS', results });
+  }, []);
+
+  const updateSimilarityResult = useCallback((result: SimilarityResult) => {
+    const entry = audit('SIMILARITY_ACTION', 'question', result.questionId, result.id, '', result.action, `Similarity action: ${result.action}`);
+    dispatch({ type: 'UPDATE_SIMILARITY_RESULT', result, audit: entry });
+  }, [audit]);
+
+  const addRecipe = useCallback((recipe: GenerationRecipe) => {
+    const entry = audit('RECIPE_CREATED', 'audit' as EntityType, recipe.id, recipe.name, '', recipe.name, `Recipe created: ${recipe.name}`);
+    dispatch({ type: 'ADD_RECIPE', recipe, audit: entry });
+  }, [audit]);
+
+  const updateRecipe = useCallback((recipe: GenerationRecipe) => {
+    const entry = audit('RECIPE_UPDATED', 'audit' as EntityType, recipe.id, recipe.name, '', recipe.name, `Recipe updated: ${recipe.name}`);
+    dispatch({ type: 'UPDATE_RECIPE', recipe, audit: entry });
+  }, [audit]);
+
+  const deleteRecipe = useCallback((id: string) => {
+    const entry = audit('RECIPE_DELETED', 'audit' as EntityType, id, id, '', '', `Recipe deleted`);
+    dispatch({ type: 'DELETE_RECIPE', id, audit: entry });
+  }, [audit]);
+
+  const addReviewComment = useCallback((questionId: string, comment: ReviewComment) => {
+    dispatch({ type: 'ADD_REVIEW_COMMENT', questionId, comment });
+  }, []);
+
+  const setBatchStatus = useCallback((batchId: string, status: GeneratedBatch['status']) => {
+    const entry = audit('BATCH_STATUS_CHANGED', 'audit' as EntityType, batchId, batchId, '', status, `Batch status changed to ${status}`);
+    dispatch({ type: 'SET_BATCH_STATUS', batchId, status, audit: entry });
+  }, [audit]);
+
   const checkPermission = useCallback((permission: string) => hasPermission(activePermissions, permission), [activePermissions]);
 
   const value = useMemo<StoreContextValue>(
@@ -344,8 +464,17 @@ export function PrototypeStoreProvider({ children }: { children: ReactNode }) {
       updateSavedView,
       deleteSavedView,
       setDefaultSavedView,
+      addQuestionVersion,
+      restoreQuestionVersion,
+      setSimilarityResults,
+      updateSimilarityResult,
+      addRecipe,
+      updateRecipe,
+      deleteRecipe,
+      addReviewComment,
+      setBatchStatus,
     }),
-    [state, activeRole, activePermissions, activeAdminName, checkPermission, audit, resetData, setRole, setBranding, setPrototypeSettings, saveTestDraft, deleteTestDraft, getTestDraft, addSavedView, updateSavedView, deleteSavedView, setDefaultSavedView],
+    [state, activeRole, activePermissions, activeAdminName, checkPermission, audit, resetData, setRole, setBranding, setPrototypeSettings, saveTestDraft, deleteTestDraft, getTestDraft, addSavedView, updateSavedView, deleteSavedView, setDefaultSavedView, addQuestionVersion, restoreQuestionVersion, setSimilarityResults, updateSimilarityResult, addRecipe, updateRecipe, deleteRecipe, addReviewComment, setBatchStatus],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

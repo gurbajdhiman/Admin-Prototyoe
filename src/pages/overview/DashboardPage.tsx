@@ -39,7 +39,7 @@ export function DashboardPage() {
   const cards = useMemo<ActionCard[]>(() => {
     const awaitingReview = questions.filter((q) => q.status === 'Under Review').length;
     const needsFix = questions.filter((q) => q.status === 'Needs Fix').length;
-    const failedJobs = batches.filter((b) => b.status === 'Rejected').length;
+    const failedJobs = batches.filter((b) => b.status === 'Failed').length;
     const testsBlocked = tests.filter((t) => t.status === 'Draft' || t.status === 'Content Ready').length;
     const testsQA = tests.filter((t) => t.status === 'Under QA').length;
     const scheduledTests = tests.filter((t) => t.status === 'Scheduled').length;
@@ -60,7 +60,7 @@ export function DashboardPage() {
 
   const recentCriticalActivity = auditLogs.slice(0, 6);
   const upcomingPublications = tests.filter((t) => t.status === 'Scheduled' && t.scheduledDate).slice(0, 5);
-  const failedJobsRetry = batches.filter((b) => b.status === 'Rejected').slice(0, 4);
+  const failedJobsRetry = batches.filter((b) => b.status === 'Failed').slice(0, 4);
 
   const workloadByRole = useMemo(() => {
     const roles = new Map<string, number>();

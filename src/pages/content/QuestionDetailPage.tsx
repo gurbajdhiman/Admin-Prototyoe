@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   FileQuestion, ArrowLeft, CheckCircle2, Circle, BookOpen, Layers,
   Tag, BarChart3, Clock, Target, Type, Languages, User, Eye,
   ShieldCheck, Archive, PencilLine, XCircle, History, TrendingUp,
+  GitCompare, RotateCcw, Snowflake,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge, questionStatusTone, difficultyTone } from '@/components/shared/StatusBadge';
@@ -16,19 +17,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { usePrototypeStore } from '@/app/store/PrototypeStore';
-import { useQuestionById, useAuditLogs } from '@/app/store/selectors';
+import { useQuestionById, useAuditLogs, useQuestionVersions, useSimilarityResults, useQuestions } from '@/app/store/selectors';
 import type { AuditEntry } from '@/app/store/types';
+import { computeSimilarity, getSimilarForQuestion, SIGNAL_LABELS } from '@/app/store/similarity';
+import { compareVersions, isFrozen } from '@/app/store/versioning';
+import { Badge } from '@/components/ui/badge';
 
 export function QuestionDetailPage() {
   const { id } = useParams();
   const question = useQuestionById(id);
-  const { dispatch, audit, activeAdminName } = usePrototypeStore();
+  const { dispatch, audit, activeAdminName, restoreQuestionVersion } = usePrototypeStore();
   const auditLogs = useAuditLogs();
+  const versions = useQuestionVersions(id);
+  const allSimilarity = useSimilarityResults();
+  const allQuestions = useQuestions();
+  const [compareV1, setCompareV1] = useState<string | null>(null);
+  const [compareV2, setCompareV2] = useState<string | null>(null);
 
   const entityAudit = useMemo(
     () => auditLogs.filter((a) => a.entityId.includes(id ?? '')),
     [auditLogs, id],
   );
+
+  const similarQuestions = useMemo(() => {
+    if (!question) return [];
+    const stored = getSimilarForQuestion(question.id, allSimilarity);
+    if (stored.length > 0) return stored;
+    return computeSimilarity(question, allQuestions.filter((q) => q.id !== question.id)).slice(0, 8);
+  }, [question, allSimilarity, allQuestions]);
+
+  const compareResults = useMemo(() => {
+    if (!compareV1 || !compareV2) return null;
+    const v1 = versions.find((v) => v.id === compareV1);
+    const v2 = versions.find((v) => v.id === compareV2);
+    if (!v1 || !v2) return null;
+    return compareVersions(v1, v2);
+  }, [compareV1, compareV2, versions]);
 
   if (!question) {
     return (
@@ -219,6 +243,96 @@ export function QuestionDetailPage() {
               <GatedButton permission="questions.archive" variant="outline" size="sm" className="w-full justify-start" onClick={handleArchive}>
                 <Archive className="mr-1.5 h-4 w-4" /> Archive
               </GatedButton>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base"><GitCompare className="h-4 w-4" /> Similar Questions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {similarQuestions.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">No similar questions detected.</p>
+              ) : (
+                <div className="space-y-2">
+                  {similarQuestions.slice(0, 6).map((sim) => {
+                    const sq = allQuestions.find((q) => q.id === sim.similarQuestionId);
+                    if (!sq) return null;
+                    return (
+                      <div key={sim.id} className="rounded-lg border p-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <Link to={`/content/questions/${sq.id}`} className="min-w-0 flex-1 hover:text-primary">
+                            <p className="truncate text-sm font-medium">{sq.stem}</p>
+                          </Link>
+                          <span className={cn('shrink-0 text-sm font-bold', sim.score >= 70 ? 'text-destructive' : sim.score >= 50 ? 'text-warning' : 'text-muted-foreground')}>{sim.score}</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">{sim.signals.map((s) => <Badge key={s} variant="outline" className="text-[9px]">{SIGNAL_LABELS[s]}</Badge>)}</div>
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => showToast.info('Rejected as duplicate', `${sq.id} flagged as duplicate.`)}>Reject</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => showToast.success('Marked acceptable', `${sq.id} is acceptable variation.`)}>Acceptable</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => showToast.info('Linked', `${sq.id} linked as related variation.`)}>Link</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4" /> Question Versions ({versions.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {versions.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">No versions recorded yet. A version is created on each content edit.</p>
+              ) : (
+                <div className="space-y-3">
+                  {(compareV1 && compareV2) && compareResults && (
+                    <div className="rounded-lg border bg-info/5 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-info">Diff: v{versions.find(v => v.id === compareV1)?.versionNumber} → v{versions.find(v => v.id === compareV2)?.versionNumber}</p>
+                      <div className="space-y-1">{compareResults.map((d) => (
+                        <div key={d.field} className="flex items-start gap-2 text-xs">
+                          <Badge variant="outline" className="shrink-0 text-[9px]">{d.field}</Badge>
+                          <span className="truncate text-muted-foreground">{String(d.v1Value ?? '—').slice(0, 30)} → {String(d.v2Value ?? '—').slice(0, 30)}</span>
+                        </div>
+                      ))}</div>
+                    </div>
+                  )}
+                  {versions.map((v) => {
+                    const frozen = isFrozen(v);
+                    return (
+                      <div key={v.id} className={cn('rounded-lg border p-3', frozen && 'border-info/30 bg-info/5')}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">v{v.versionNumber}</span>
+                            {frozen && <Badge variant="outline" className="text-[9px] gap-0.5"><Snowflake className="h-2.5 w-2.5" /> Frozen</Badge>}
+                            <StatusBadge tone={questionStatusTone(v.reviewStatus)} className="text-[9px]">{v.reviewStatus}</StatusBadge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{v.changedAt}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{v.reason}</p>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>by {v.changedBy}</span>
+                          <span>·</span>
+                          <span>{v.changedFields.join(', ')}</span>
+                          {v.usedInPublishedTest && <><span>·</span><span className="text-info">used in published test</span></>}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setCompareV1(v.id)}>Compare from</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setCompareV2(v.id)}>Compare to</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" disabled={frozen} onClick={() => {
+                            if (frozen) { showToast.error('Frozen version', 'Cannot restore a frozen version used in published tests.'); return; }
+                            restoreQuestionVersion(v.questionId, v.id);
+                            showToast.success('Version restored', `Restored to v${v.versionNumber}.`);
+                          }}><RotateCcw className="mr-1 h-3 w-3" /> Restore</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

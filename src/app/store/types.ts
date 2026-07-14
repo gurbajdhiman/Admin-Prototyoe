@@ -59,6 +59,13 @@ export interface SupportComment {
   content: string;
 }
 
+export type BatchStatus =
+  | 'Draft' | 'Queued' | 'Running' | 'Validation' | 'Review'
+  | 'Partially Approved' | 'Approved' | 'Failed' | 'Cancelled';
+
+export type GeneratedItemStatus =
+  | 'Unreviewed' | 'Needs Fix' | 'Approved' | 'Rejected';
+
 export interface GeneratedBatch {
   id: string;
   createdAt: string;
@@ -68,7 +75,22 @@ export interface GeneratedBatch {
   count: number;
   seed: number;
   questions: GeneratedQuestion[];
-  status: 'Unreviewed' | 'In Review' | 'Approved' | 'Rejected';
+  status: BatchStatus;
+  recipeId?: string;
+  priority?: 'Low' | 'Normal' | 'High';
+  reviewer?: string;
+  dueDate?: string;
+  generatorVersion?: string;
+  runtimeMs?: number;
+  costMock?: number;
+  logs?: BatchLogEntry[];
+}
+
+export interface BatchLogEntry {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warning' | 'error';
+  message: string;
 }
 
 export interface GeneratedQuestion {
@@ -79,10 +101,81 @@ export interface GeneratedQuestion {
   options: { id: string; text: string }[];
   correctOption: string;
   explanation: string;
-  status: 'Unreviewed' | 'Needs Fix' | 'Approved' | 'Rejected';
+  status: GeneratedItemStatus;
+  patternId?: string;
+  generatorVersion?: string;
+  validationScore?: number;
+  validationResult?: 'Passed' | 'Issues' | 'Pending';
+  reviewer?: string;
+  questionBankId?: string;
+  duplicateOf?: string;
   originalStem?: string;
   originalOptions?: { id: string; text: string }[];
   originalExplanation?: string;
+}
+
+export interface QuestionVersion {
+  id: string;
+  questionId: string;
+  versionNumber: number;
+  sourceVersionId?: string;
+  snapshot: Question;
+  changedFields: string[];
+  changedBy: string;
+  changedAt: string;
+  reason: string;
+  reviewStatus: string;
+  frozenUsageCount: number;
+  usedInPublishedTest: boolean;
+}
+
+export type SimilaritySignal =
+  | 'exact-normalized' | 'near-identical' | 'matching-options'
+  | 'same-topic-pattern' | 'same-numerical-structure'
+  | 'related-variation' | 'simulated-semantic';
+
+export interface SimilarityResult {
+  id: string;
+  questionId: string;
+  similarQuestionId: string;
+  signals: SimilaritySignal[];
+  score: number;
+  action: 'none' | 'rejected-duplicate' | 'acceptable-variation' | 'linked-related';
+}
+
+export interface GenerationRecipe {
+  id: string;
+  name: string;
+  description: string;
+  version: number;
+  exam: string;
+  stage?: string;
+  subject: string;
+  chapter?: string;
+  topic?: string;
+  subtopic?: string;
+  languages: string[];
+  difficultyDistribution: { Easy: number; Moderate: number; Hard: number; Expert?: number };
+  questionCount: number;
+  questionType: string;
+  patternSelection: string[];
+  excludePreviousBatch: boolean;
+  similarityThreshold: number;
+  validationProfile: string;
+  assignedReviewer?: string;
+  dueDate?: string;
+  priority: 'Low' | 'Normal' | 'High';
+  seed?: number;
+  generatorVersion: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewComment {
+  id: string;
+  author: string;
+  timestamp: string;
+  content: string;
 }
 
 export interface TestDraftSection {
@@ -200,6 +293,10 @@ export interface PrototypeState {
   generatedBatches: GeneratedBatch[];
   testDrafts: Record<string, TestDraft>;
   savedViews: SavedView[];
+  questionVersions: Record<string, QuestionVersion[]>;
+  similarityResults: SimilarityResult[];
+  generationRecipes: GenerationRecipe[];
+  reviewComments: Record<string, ReviewComment[]>;
   branding: BrandingSettings;
   prototypeSettings: PrototypeSettings;
   activeRole: string;

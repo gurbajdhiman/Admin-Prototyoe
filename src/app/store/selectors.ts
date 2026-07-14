@@ -3,6 +3,7 @@ import type {
   Question, Test, Package, Order, Coupon, Entitlement,
   Student, SupportRequest, NotificationCampaign, AuditEntry,
   StudentNote, SupportComment, GeneratedBatch, TestDraft, SavedView,
+  QuestionVersion, SimilarityResult, GenerationRecipe, ReviewComment,
 } from './types';
 
 export function useQuestions(): Question[] {
@@ -106,4 +107,24 @@ export function useSavedViewsByPage(page: string): SavedView[] {
 export function useDefaultSavedView(page: string): SavedView | undefined {
   const views = usePrototypeStore().state.savedViews;
   return views.find((v) => v.page === page && v.isDefault);
+}
+
+export function useQuestionVersions(questionId: string | undefined): QuestionVersion[] {
+  const store = usePrototypeStore();
+  if (!questionId) return [];
+  return store.state.questionVersions[questionId] ?? [];
+}
+
+export function useSimilarityResults(): SimilarityResult[] {
+  return usePrototypeStore().state.similarityResults;
+}
+
+export function useGenerationRecipes(): GenerationRecipe[] {
+  return usePrototypeStore().state.generationRecipes;
+}
+
+export function useReviewComments(questionId: string | undefined): ReviewComment[] {
+  const store = usePrototypeStore();
+  if (!questionId) return [];
+  return store.state.reviewComments[questionId] ?? [];
 }

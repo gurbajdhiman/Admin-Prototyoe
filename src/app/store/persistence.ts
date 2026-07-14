@@ -122,6 +122,10 @@ export function createDefaultState(): PrototypeState {
     generatedBatches: [],
     testDrafts: {},
     savedViews: [],
+    questionVersions: {},
+    similarityResults: [],
+    generationRecipes: [],
+    reviewComments: {},
     branding: {
       platformName: 'ExamTree',
       tagline: 'Master Your Exam Preparation',
