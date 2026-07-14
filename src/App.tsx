@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { AdminLayout } from '@/app/layout/AdminLayout';
 import { ThemeProvider } from '@/app/theme/ThemeProvider';
 import { PrototypeStoreProvider } from '@/app/store/PrototypeStore';
@@ -44,57 +44,60 @@ import { AuditLogsPage } from '@/pages/settings/AuditLogsPage';
 import { IntegrationsPage } from '@/pages/settings/IntegrationsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
+const router = createBrowserRouter([
+  {
+    element: <AdminLayout />,
+    children: [
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: '/dashboard', element: <DashboardPage /> },
+      { path: '/content/questions', element: <QuestionBankPage /> },
+      { path: '/content/questions/:id', element: <QuestionDetailPage /> },
+      { path: '/content/studio', element: <QuestionStudioPage /> },
+      { path: '/content/review', element: <ContentReviewPage /> },
+      { path: '/content/taxonomy', element: <TaxonomyPage /> },
+      { path: '/content/sets', element: <DiPassageSetsPage /> },
+      { path: '/content/media', element: <MediaLibraryPage /> },
+      { path: '/tests', element: <TestsPage /> },
+      { path: '/tests/builder', element: <TestBuilderPage /> },
+      { path: '/tests/test-builder', element: <TestBuilderPage /> },
+      { path: '/tests/series', element: <TestSeriesPage /> },
+      { path: '/tests/blueprints', element: <ExamBlueprintsPage /> },
+      { path: '/tests/calendar', element: <PublishingCalendarPage /> },
+      { path: '/tests/:id', element: <TestDetailPage /> },
+      { path: '/commerce/packages', element: <PackagesPage /> },
+      { path: '/commerce/packages/:id', element: <PackageDetailPage /> },
+      { path: '/commerce/orders', element: <OrdersPaymentsPage /> },
+      { path: '/commerce/orders/:id', element: <OrderDetailPage /> },
+      { path: '/commerce/coupons', element: <CouponsPage /> },
+      { path: '/commerce/entitlements', element: <EntitlementsPage /> },
+      { path: '/users/students', element: <StudentsPage /> },
+      { path: '/users/students/:id', element: <StudentDetailPage /> },
+      { path: '/users/team', element: <AdminTeamPage /> },
+      { path: '/users/support', element: <SupportRequestsPage /> },
+      { path: '/users/support/:id', element: <SupportDetailPage /> },
+      { path: '/users/notifications', element: <NotificationsPage /> },
+      { path: '/analytics/business', element: <BusinessAnalyticsPage /> },
+      { path: '/analytics/tests', element: <TestAnalyticsPage /> },
+      { path: '/analytics/questions', element: <QuestionAnalyticsPage /> },
+      { path: '/analytics/content-quality', element: <ContentQualityPage /> },
+      { path: '/analytics/system-health', element: <SystemHealthPage /> },
+      { path: '/settings/exam-config', element: <ExamConfigurationPage /> },
+      { path: '/settings/languages', element: <LanguagesPage /> },
+      { path: '/settings/roles', element: <RolesPermissionsPage /> },
+      { path: '/settings/branding', element: <BrandingPage /> },
+      { path: '/settings/audit-logs', element: <AuditLogsPage /> },
+      { path: '/settings/integrations', element: <IntegrationsPage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+]);
+
 export default function App() {
   return (
     <ThemeProvider>
       <PrototypeStoreProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AdminLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/content/questions" element={<QuestionBankPage />} />
-            <Route path="/content/questions/:id" element={<QuestionDetailPage />} />
-            <Route path="/content/studio" element={<QuestionStudioPage />} />
-            <Route path="/content/review" element={<ContentReviewPage />} />
-            <Route path="/content/taxonomy" element={<TaxonomyPage />} />
-            <Route path="/content/sets" element={<DiPassageSetsPage />} />
-            <Route path="/content/media" element={<MediaLibraryPage />} />
-            <Route path="/tests" element={<TestsPage />} />
-            <Route path="/tests/builder" element={<TestBuilderPage />} />
-            <Route path="/tests/test-builder" element={<TestBuilderPage />} />
-            <Route path="/tests/series" element={<TestSeriesPage />} />
-            <Route path="/tests/blueprints" element={<ExamBlueprintsPage />} />
-            <Route path="/tests/calendar" element={<PublishingCalendarPage />} />
-            <Route path="/tests/:id" element={<TestDetailPage />} />
-            <Route path="/commerce/packages" element={<PackagesPage />} />
-            <Route path="/commerce/packages/:id" element={<PackageDetailPage />} />
-            <Route path="/commerce/orders" element={<OrdersPaymentsPage />} />
-            <Route path="/commerce/orders/:id" element={<OrderDetailPage />} />
-            <Route path="/commerce/coupons" element={<CouponsPage />} />
-            <Route path="/commerce/entitlements" element={<EntitlementsPage />} />
-            <Route path="/users/students" element={<StudentsPage />} />
-            <Route path="/users/students/:id" element={<StudentDetailPage />} />
-            <Route path="/users/team" element={<AdminTeamPage />} />
-            <Route path="/users/support" element={<SupportRequestsPage />} />
-            <Route path="/users/support/:id" element={<SupportDetailPage />} />
-            <Route path="/users/notifications" element={<NotificationsPage />} />
-            <Route path="/analytics/business" element={<BusinessAnalyticsPage />} />
-            <Route path="/analytics/tests" element={<TestAnalyticsPage />} />
-            <Route path="/analytics/questions" element={<QuestionAnalyticsPage />} />
-            <Route path="/analytics/content-quality" element={<ContentQualityPage />} />
-            <Route path="/analytics/system-health" element={<SystemHealthPage />} />
-            <Route path="/settings/exam-config" element={<ExamConfigurationPage />} />
-            <Route path="/settings/languages" element={<LanguagesPage />} />
-            <Route path="/settings/roles" element={<RolesPermissionsPage />} />
-            <Route path="/settings/branding" element={<BrandingPage />} />
-            <Route path="/settings/audit-logs" element={<AuditLogsPage />} />
-            <Route path="/settings/integrations" element={<IntegrationsPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-      <Toaster />
+        <RouterProvider router={router} />
+        <Toaster />
       </PrototypeStoreProvider>
     </ThemeProvider>
   );

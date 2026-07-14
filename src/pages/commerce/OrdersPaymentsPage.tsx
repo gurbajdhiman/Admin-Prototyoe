@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ShoppingCart, Download, Eye, CheckCircle2, RefreshCw, RotateCcw, FileText,
   MessageSquare, MoreVertical, IndianRupee, AlertTriangle, Hash,
@@ -105,7 +105,7 @@ export function OrdersPaymentsPage() {
     return { total, successful, failed, refunded, revenue };
   }, [orders]);
 
-  const filteredByChip = (value: ChipValue): Order[] => {
+  const filteredByChip = useCallback((value: ChipValue): Order[] => {
     switch (value) {
       case 'Success': case 'Pending': case 'Failed': case 'Refunded':
         return orders.filter((o) => o.paymentStatus === value);
@@ -114,12 +114,12 @@ export function OrdersPaymentsPage() {
       case 'recon_issue': return orders.filter((o) => o.reconIssue);
       default: return orders;
     }
-  };
+  }, [orders]);
 
   const filtered = useMemo(() => {
     if (chip === 'all') return orders;
     return filteredByChip(chip);
-  }, [chip, orders]);
+  }, [chip, orders, filteredByChip]);
 
   const chipCount = (value: ChipValue) => {
     if (value === 'all') return orders.length;

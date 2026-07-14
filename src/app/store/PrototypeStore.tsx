@@ -54,8 +54,10 @@ function reducer(state: PrototypeState, action: Action): PrototypeState {
     case 'SET_PROTOTYPE_SETTINGS':
       return { ...state, prototypeSettings: { ...state.prototypeSettings, ...action.settings } };
 
-    case 'ADD_AUDIT':
+    case 'ADD_AUDIT': {
+      if (state.auditLogs.some((a) => a.id === action.entry.id)) return state;
       return { ...state, auditLogs: [action.entry, ...state.auditLogs] };
+    }
 
     case 'UPDATE_QUESTION': {
       const exists = state.questions.some((q) => q.id === action.question.id);

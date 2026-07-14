@@ -39,17 +39,19 @@ The dev server starts automatically. Open the URL shown in your terminal.
 ### Connected Local Workflows
 - **Central prototype store** (`src/app/store/`) — all data lives in a React Context + reducer, initialized from mock datasets, persisted to localStorage with a versioned schema
 - **Actions persist** — approving a question, creating a test, granting entitlements, resolving support tickets, and all other mutations update the store and survive page refresh
-- **Audit logging** — every meaningful mutation creates an audit entry with admin name, role, action, entity, old/new values, reason, and session ID
+- **Audit logging** — every meaningful mutation creates an audit entry with admin name, role, action, entity, old/new values, reason, and session ID; a reducer-level deduplication guard prevents duplicate entries when an audit entry is both returned by `audit()` and passed to a mutation action
 - **Reset prototype data** — restore all data to defaults from Settings → Exam Configuration → Prototype Settings
 
 ### Role-Based Access
 - **10 prototype roles** switchable from the profile menu in the topbar
-- **Permission model** — each role has a defined set of permissions; unavailable actions are disabled with tooltips
+- **47 granular permissions** — each role has a defined subset of permissions spanning content, generation, coverage, tests, commerce, corrections, challenges, imports, jobs, feature flags, roles, and refunds
+- **Permission enforcement** — `hasPermission()` checks for `['all']` wildcard or specific permission membership; unavailable actions are disabled with tooltips
 - **Permission matrix** — visualized in Settings → Roles & Permissions
 
 ### Test Builder
 - **Controlled draft model** — all 7 steps share a single draft state, values persist between steps
-- **Unsaved-changes protection** — beforeunload warning, save draft, discard changes
+- **Full round-trip editing** — opening an existing test restores all fields exactly (sections, pattern, description, selected questions, navigation rules, schedule); saving without changes preserves the original values
+- **Unsaved-changes protection** — in-app route navigation blocker with Save Draft / Discard Changes / Continue Editing dialog, plus browser beforeunload warning
 - **Dynamic validation** — issues calculated from current draft data; publishing blocked when errors exist
 - **Draft persistence** — drafts saved to localStorage and restored on return
 
@@ -78,19 +80,21 @@ src/
 ├── app/
 │   ├── store/                       # Central data layer
 │   │   ├── PrototypeStore.tsx       # Context + reducer + provider
-│   │   ├── types.ts                 # All domain types
-│   │   ├── persistence.ts           # localStorage, audit, roles
+│   │   ├── types.ts                 # Runtime store types
+│   │   ├── domain-types.ts          # Comprehensive domain types for future backend contracts
+│   │   ├── status-machines.ts       # Transition maps + guards for 6 entity status machines
+│   │   ├── persistence.ts           # localStorage, audit, roles, permissions
 │   │   ├── selectors.ts             # Typed hooks for store data
 │   │   └── validation.ts            # Test Builder validation
 │   ├── theme/ThemeProvider.tsx
 │   ├── nav/navigation.ts
 │   └── layout/                      # AdminLayout, Sidebar, Topbar, Breadcrumbs
 ├── components/
-│   ├── shared/                      # PageHeader, DataTable, FilterBar, GatedAction, etc.
+│   ├── shared/                      # PageHeader, DataTable, FilterBar, GatedAction, UnsavedChangesDialog
 │   └── ui/                          # shadcn/ui primitives
 ├── data/                            # Mock datasets (read-only)
 ├── pages/                           # 37+ pages across 7 modules
-└── test/                            # Vitest test files
+└── test/                            # Vitest test files (audit dedup, status machines, round-trip, etc.)
 ```
 
 ## Navigation Groups

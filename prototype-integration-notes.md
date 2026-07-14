@@ -4,45 +4,52 @@ Reference document for integrating the ExamTree admin prototype's patterns, comp
 
 ## 1. Route Structure
 
-All routes are defined in `src/App.tsx` using React Router v6 `BrowserRouter`. Every route is wrapped in `AdminLayout`.
+All routes are defined in `src/App.tsx` using React Router v6 `createBrowserRouter` (data router). Every route is wrapped in `AdminLayout` via a layout route with `<Outlet />`. The data router is required for `useBlocker`-based in-app navigation blocking.
 
 ```
-/                                    → Dashboard
-/content/question-bank               → QuestionBankPage
-/content/question-studio             → QuestionStudioPage
-/content/content-review              → ContentReviewPage
+/                                    → redirects to /dashboard
+/dashboard                           → DashboardPage
+/content/questions                   → QuestionBankPage
+/content/questions/:id               → QuestionDetailPage
+/content/studio                      → QuestionStudioPage
+/content/review                      → ContentReviewPage
 /content/taxonomy                    → TaxonomyPage
-/content/di-passage-sets             → DiPassageSetsPage
-/content/media-library               → MediaLibraryPage
-/tests/tests                         → TestsPage
-/tests/test-builder/:id?             → TestBuilderPage
-/tests/test-series                   → TestSeriesPage
-/tests/exam-blueprints               → ExamBlueprintsPage
-/tests/publishing-calendar           → PublishingCalendarPage
+/content/sets                        → DiPassageSetsPage
+/content/media                       → MediaLibraryPage
+/tests                               → TestsPage
+/tests/builder                       → TestBuilderPage (new test)
+/tests/test-builder                  → TestBuilderPage (edit existing test)
+/tests/series                        → TestSeriesPage
+/tests/blueprints                    → ExamBlueprintsPage
+/tests/calendar                      → PublishingCalendarPage
+/tests/:id                           → TestDetailPage
 /commerce/packages                   → PackagesPage
+/commerce/packages/:id               → PackageDetailPage
 /commerce/orders                     → OrdersPaymentsPage
+/commerce/orders/:id                 → OrderDetailPage
 /commerce/coupons                    → CouponsPage
 /commerce/entitlements               → EntitlementsPage
 /users/students                      → StudentsPage
 /users/students/:id                  → StudentDetailPage
-/users/admin-team                    → AdminTeamPage
+/users/team                          → AdminTeamPage
 /users/support                       → SupportRequestsPage
+/users/support/:id                   → SupportDetailPage
 /users/notifications                 → NotificationsPage
 /analytics/business                  → BusinessAnalyticsPage
 /analytics/tests                     → TestAnalyticsPage
 /analytics/questions                 → QuestionAnalyticsPage
 /analytics/content-quality           → ContentQualityPage
 /analytics/system-health             → SystemHealthPage
-/settings/exam-configuration         → ExamConfigurationPage
+/settings/exam-config                → ExamConfigurationPage
 /settings/languages                  → LanguagesPage
-/settings/roles-permissions          → RolesPermissionsPage
+/settings/roles                      → RolesPermissionsPage
 /settings/branding                   → BrandingPage
 /settings/audit-logs                 → AuditLogsPage
 /settings/integrations               → IntegrationsPage
 *                                    → NotFoundPage
 ```
 
-Navigation metadata lives in `src/app/nav/navigation.ts` as `NAV_GROUPS` (7 groups with items, icons, badge counts) and `NAV_LOOKUP` (flat map by path for breadcrumbs). To add a route: add the `<Route>` in `App.tsx`, add the nav item to the appropriate group in `navigation.ts`, and create the page file.
+Navigation metadata lives in `src/app/nav/navigation.ts` as `NAV_GROUPS` (7 groups with items, icons, badge counts) and `NAV_LOOKUP` (flat map by path for breadcrumbs). To add a route: add a route object in `App.tsx`, add the nav item to the appropriate group in `navigation.ts`, and create the page file.
 
 ## 2. Reusable Components
 
@@ -196,19 +203,32 @@ Based on the mock data shapes, the live database should include:
 ### Roles
 The prototype defines roles in `data/users.ts` as `ADMIN_ROLES`. The permission matrix is visualized in `RolesPermissionsPage` and `AdminTeamPage`.
 
-### Permission Scopes
-| Permission | Scope |
-|------------|-------|
-| Questions | Create, edit, review, delete questions |
-| Tests | Create, edit, publish, archive tests |
-| Review | Approve/reject content in review queue |
-| Publish | Publish tests and content |
-| Commerce | Manage packages, orders, refunds, coupons |
-| Users | Manage students and admin team |
-| Analytics | View all analytics dashboards |
-| Settings | Modify platform configuration |
-| Audit | View audit logs |
-| Team Management | Manage admin roles and permissions |
+### Permission Scopes (47 granular permissions)
+| Permission Group | Permissions | Scope |
+|------------------|------------|-------|
+| Questions | `questions.view`, `questions.create`, `questions.edit`, `questions.review`, `questions.archive` | Question CRUD and review |
+| Content | `content.view` | View content module |
+| Generation | `generation.use`, `generation.manage` | AI question generation |
+| Coverage | `coverage.view`, `coverage.manage` | Exam coverage planning |
+| Tests | `tests.view`, `tests.create`, `tests.edit`, `tests.publish`, `tests.qa` | Test CRUD, publishing, and QA review |
+| Commerce | `commerce.view`, `payments.manage`, `refunds.request`, `refunds.approve`, `entitlements.manage`, `packages.manage`, `coupons.manage` | Payments, packages, orders, coupons, entitlements |
+| Users | `users.view`, `users.manage` | Student and admin team management |
+| Support | `support.view`, `support.manage` | Support ticket queue |
+| Notifications | `notifications.send` | Campaign management |
+| Analytics | `analytics.view` | All analytics dashboards |
+| Settings | `settings.manage` | Platform configuration |
+| Audit | `audit.view` | View audit logs |
+| Studio/Review | `studio.use`, `review.approve`, `review.reject`, `review.comment` | Question studio and content review |
+| Taxonomy | `taxonomy.manage` | Exam/subject/chapter/topic tree |
+| Series | `series.manage` | Test series bundles |
+| Blueprints | `blueprints.manage` | Exam pattern templates |
+| Corrections | `corrections.view`, `corrections.manage`, `recalculation.manage` | Correction cases and score recalculation |
+| Challenges | `challenges.view`, `challenges.manage` | Student question challenges |
+| Imports | `imports.manage` | Bulk data imports |
+| Jobs | `jobs.view`, `jobs.manage` | Background job monitoring |
+| Feature Flags | `featureflags.view`, `featureflags.manage` | Feature flag configuration |
+| Roles | `roles.manage` | Admin role and permission management |
+| Reports | `reports.export` | Data export |
 
 ### Integration Notes
 - In the live app, permissions should be enforced server-side (RBAC middleware on every API endpoint).
@@ -260,9 +280,9 @@ These features are simulated and must not be wired to real services without prop
 
 | Feature | Prototype Behavior | Live Integration Required |
 |---------|-------------------|--------------------------|
-| Authentication | None — all pages accessible | Supabase Auth or custom JWT |
-| Data persistence | In-memory mock arrays | PostgreSQL via Supabase |
-| Payment processing | Toast notification only | Razorpay/Cashfree gateway + webhooks |
+| Authentication | None — all pages accessible | Firebase Auth or equivalent (JWT-based) |
+| Data persistence | In-memory mock arrays | PostgreSQL via an existing or new Express backend |
+| Payment processing | Toast notification only | Razorpay or equivalent gateway + webhooks |
 | SMS notifications | Placeholder, not sent | Twilio API integration |
 | WhatsApp notifications | Placeholder, not sent | WhatsApp Business API |
 | Push notifications | Mock status shown | Firebase Cloud Messaging |
@@ -309,11 +329,40 @@ All prototype state now flows through a single store in `src/app/store/` instead
 
 | Store File | Prototype Responsibility | Live App Equivalent |
 |------------|---------------------------|---------------------|
-| `PrototypeStore.tsx` | React Context + `useReducer`; defines all `Action` types and the reducer; exposes `usePrototypeStore()` with `state`, `dispatch`, `activeRole`, `activePermissions`, `hasPermission()`, `audit()`, `resetData()`, `setRole()`, and test-draft helpers | Replace with a server cache (React Query / SWR) for reads and mutation hooks for writes. Each reducer action becomes an API call + cache invalidation. The Context provider becomes an auth/session provider. |
-| `persistence.ts` | localStorage persistence under `examtree-prototype-v1` with `SCHEMA_VERSION`; `createDefaultState()` seeds from mock data; `ROLE_PERMISSIONS` map (10 roles) and `ALL_PERMISSIONS`; `hasPermission()`; audit ID + session ID generation; `createAuditEntry()` | localStorage → PostgreSQL. `SCHEMA_VERSION` → database migrations. `createDefaultState()` → seed/migration data. `ROLE_PERMISSIONS` → server RBAC tables or JWT claims (see Permission Model below). Session ID → server session/JWT `sid` claim. |
+| `PrototypeStore.tsx` | React Context + `useReducer`; defines all `Action` types and the reducer (including ID-based audit dedup guard); exposes `usePrototypeStore()` with `state`, `dispatch`, `activeRole`, `activePermissions`, `hasPermission()`, `audit()`, `resetData()`, `setRole()`, and test-draft helpers | Replace with a server cache (React Query / SWR) for reads and mutation hooks for writes. Each reducer action becomes an API call + cache invalidation. The Context provider becomes an auth/session provider. The audit dedup guard becomes a server-side unique constraint on audit entry IDs. |
+| `domain-types.ts` | Comprehensive domain types for future backend contracts: ExamFamily, Exam, Subject, QuestionVersion, GenerationRecipe, TestBlueprint, PublicationSnapshot, CorrectionCase, BackgroundJob, FeatureFlag, etc. | Use as the canonical TypeScript types for API contracts. Generate OpenAPI schema types from these, or use them directly as shared types between frontend and backend. |
+| `status-machines.ts` | Six status machines (Question, Test, GenerationBatch, Challenge, Correction, Order) with transition maps and `canTransition*()` guard functions | Mirror server-side as the authoritative transition logic. Each `canTransition*()` function maps to a server-side state-transition guard; `getValidTransitions()` can drive UI to show valid next actions. |
+| `persistence.ts` | localStorage persistence under `examtree-prototype-v1` with `SCHEMA_VERSION`; `createDefaultState()` seeds from mock data; `ROLE_PERMISSIONS` map (10 roles, 47 granular permissions) and `ALL_PERMISSIONS`; `hasPermission()`; audit ID + session ID generation; `createAuditEntry()` | localStorage → PostgreSQL. `SCHEMA_VERSION` → database migrations. `createDefaultState()` → seed/migration data. `ROLE_PERMISSIONS` → server RBAC tables or JWT claims (see Permission Model below). Session ID → server session/JWT `sid` claim. |
 | `selectors.ts` | Hook-based selectors: `useQuestions`, `useTests`, `useTestById`, `useQuestionById`, `usePackages`, `useOrders`, `useOrderById`, `useCoupons`, `useEntitlements`, `useEntitlementsByStudent`, `useStudents`, `useStudentById`, `useSupportRequests`, `useSupportById`, `useNotifications`, `useAuditLogs`, `useAuditByEntity`, `useStudentNotes`, `useSupportComments`, `useGeneratedBatches`, `useTestDrafts` | Replace each with a React Query `useQuery` hook bound to the corresponding API endpoint. `use*ById` selectors map to `GET /api/{resource}/:id`; `useAuditByEntity` maps to `GET /api/audit-logs?entityId=`. |
 | `validation.ts` | `validateDraft(draft)` returns `ValidationIssue[]` (severity `error` / `warning` / `info`); `canPublish(draft)` returns true when zero errors. Covers name, exam, totals, section sums, duplicate section names, selected-question count, duplicate question IDs, schedule, and QA-reviewer checks | Mirror as server-side validation (Zod schemas on the API). `canPublish` becomes a pre-publish server check. Keep the client copy for instant inline feedback, but the server is the source of truth. |
 | `types.ts` | `PrototypeState`, `AuditEntry`, `EntityType`, `PrototypeRole`, `PrototypeSettings`, `BrandingSettings`, `StudentNote`, `SupportComment`, `GeneratedBatch`, `GeneratedQuestion`, `TestDraft`, `TestDraftSection`; re-exports domain types | Shared TypeScript types / generated OpenAPI schema types. `AuditEntry` and `TestDraft` become the canonical API contract types. |
+
+### Audit Deduplication
+
+The reducer's `ADD_AUDIT` case includes an ID-based dedup guard: `if (state.auditLogs.some((a) => a.id === action.entry.id)) return state`. This prevents duplicate entries when an audit entry is both returned by `audit()` (which dispatches `ADD_AUDIT`) and passed as an `audit:` property to a mutation action (which also dispatches `ADD_AUDIT`). In the live app, enforce this with a unique constraint on `audit_logs.id` and an INSERT-only access pattern.
+
+### Test Builder Round-Trip
+
+The Test Builder saves the full draft under a `test-saved-{id}` key in the `testDrafts` store on publish. When editing an existing test, the initializer checks for this key and restores the full draft (sections, pattern, description, selected questions, navigation rules, schedule, series). Without this key (e.g., tests created before the round-trip fix), it falls back to `testToDraft()` which maps from the simplified `Test` object and applies defaults. In the live app, the `GET /api/tests/:id` response should include the full test definition so the round-trip key is unnecessary.
+
+### In-App Navigation Blocking
+
+`useUnsavedChanges` now integrates `useBlocker` from react-router-dom, which requires the data router (`createBrowserRouter`). When the blocker triggers, the `UnsavedChangesDialog` component offers three actions: Continue Editing, Discard Changes, Save Draft. In the live app, this pattern works as-is — `useBlocker` is a standard React Router v6 feature. The `UnsavedChangesDialog` component is reusable across any form page.
+
+### Status Machines
+
+`status-machines.ts` defines six status machines with transition maps and guard functions:
+
+| Machine | States | Guard Function |
+|---------|--------|----------------|
+| Question | 7 states (Draft → Generated → Under Review → Needs Fix → Approved/Rejected → Archived) | `canTransitionQuestion()` |
+| Test | 9 states (Draft → Content Ready → Under QA → Needs Fix → QA Approved → Scheduled → Live → Completed → Archived) | `canTransitionTest()` |
+| GenerationBatch | 9 states (Draft → Queued → Running → Validation → Review → Partially Approved/Approved/Failed/Cancelled) | `canTransitionGenerationBatch()` |
+| Challenge | 7 states (New → Investigating → Accepted/Rejected → Correction Required → Recalculation Required → Resolved) | `canTransitionChallenge()` |
+| Correction | 8 states (Draft → Impact Calculated → Awaiting Approval → Approved → Running → Completed/Failed/Rejected) | `canTransitionCorrection()` |
+| Order | 6 states (Created → Pending → Paid/Failed → Partially Refunded → Refunded) | `canTransitionOrder()` |
+
+`getValidTransitions<S>(map, current)` returns the set of valid next states for a given machine. In the live app, mirror these transition maps server-side as the authoritative state-transition logic; use the client-side guards for instant UI feedback.
 
 ### Detail Routes
 

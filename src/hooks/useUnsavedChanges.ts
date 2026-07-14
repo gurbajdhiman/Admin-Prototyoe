@@ -1,6 +1,10 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { useBlocker } from 'react-router-dom';
 
-export function useUnsavedChanges(isDirty: boolean, message = 'You have unsaved changes. Leave anyway?') {
+export function useUnsavedChanges(
+  isDirty: boolean,
+  message = 'You have unsaved changes. Leave anyway?',
+) {
   const ref = useRef(isDirty);
   ref.current = isDirty;
 
@@ -16,6 +20,8 @@ export function useUnsavedChanges(isDirty: boolean, message = 'You have unsaved 
     return () => window.removeEventListener('beforeunload', handler);
   }, [message]);
 
+  const blocker = useBlocker(ref.current);
+
   const confirmLeave = useCallback((): boolean => {
     if (ref.current) {
       return window.confirm(message);
@@ -23,5 +29,5 @@ export function useUnsavedChanges(isDirty: boolean, message = 'You have unsaved 
     return true;
   }, [message]);
 
-  return { confirmLeave };
+  return { confirmLeave, blocker };
 }

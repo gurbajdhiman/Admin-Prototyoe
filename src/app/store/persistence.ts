@@ -12,15 +12,45 @@ export const SCHEMA_VERSION = 1;
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   'Super Admin': ['all'],
-  'Content Manager': ['questions.view', 'questions.create', 'questions.edit', 'questions.review', 'questions.archive', 'tests.view', 'tests.create', 'tests.edit', 'review.approve', 'review.reject', 'taxonomy.manage'],
-  'Question Author': ['questions.view', 'questions.create', 'questions.edit', 'studio.use'],
-  'Reviewer': ['questions.view', 'questions.review', 'review.approve', 'review.reject', 'review.comment'],
-  'Test Manager': ['tests.view', 'tests.create', 'tests.edit', 'tests.publish', 'series.manage', 'blueprints.manage'],
-  'Support Agent': ['support.view', 'support.manage', 'users.view', 'notifications.send'],
-  'Finance Admin': ['commerce.view', 'payments.manage', 'refunds.manage', 'entitlements.manage', 'coupons.manage', 'packages.manage'],
-  'Marketing Admin': ['notifications.send', 'packages.manage', 'coupons.manage', 'branding.manage'],
-  'Analyst': ['analytics.view', 'reports.export'],
-  'Read-only Auditor': ['audit.view', 'analytics.view'],
+  'Content Manager': [
+    'content.view', 'questions.view', 'questions.create', 'questions.edit', 'questions.review',
+    'questions.approve', 'questions.archive', 'generation.use', 'generation.manage',
+    'taxonomy.manage', 'coverage.view', 'coverage.manage', 'challenges.view', 'challenges.manage',
+    'imports.manage', 'review.approve', 'review.reject', 'review.comment',
+    'tests.view', 'tests.create', 'tests.edit',
+  ],
+  'Question Author': [
+    'content.view', 'questions.view', 'questions.create', 'questions.edit',
+    'generation.use', 'studio.use',
+  ],
+  'Reviewer': [
+    'content.view', 'questions.view', 'questions.review', 'questions.approve',
+    'review.approve', 'review.reject', 'review.comment', 'challenges.view',
+  ],
+  'Test Manager': [
+    'tests.view', 'tests.create', 'tests.edit', 'tests.qa', 'tests.publish',
+    'series.manage', 'blueprints.manage', 'corrections.view', 'corrections.manage',
+    'recalculation.manage', 'coverage.view', 'content.view',
+  ],
+  'Support Agent': [
+    'support.view', 'support.manage', 'users.view', 'notifications.send',
+    'challenges.view', 'challenges.manage',
+  ],
+  'Finance Admin': [
+    'commerce.view', 'payments.manage', 'refunds.request', 'refunds.approve',
+    'entitlements.manage', 'coupons.manage', 'packages.manage',
+  ],
+  'Marketing Admin': [
+    'notifications.send', 'packages.manage', 'coupons.manage', 'branding.manage',
+  ],
+  'Analyst': [
+    'analytics.view', 'reports.export', 'content.view', 'coverage.view',
+    'challenges.view', 'corrections.view', 'audit.view',
+  ],
+  'Read-only Auditor': [
+    'audit.view', 'analytics.view', 'content.view', 'coverage.view',
+    'challenges.view', 'corrections.view', 'jobs.view', 'featureflags.view',
+  ],
 };
 
 export const PROTOTYPE_ROLES: { name: string; permissions: string[] }[] = ADMIN_ROLES.map((name) => ({
@@ -29,12 +59,25 @@ export const PROTOTYPE_ROLES: { name: string; permissions: string[] }[] = ADMIN_
 }));
 
 export const ALL_PERMISSIONS = [
-  'questions.view', 'questions.create', 'questions.edit', 'questions.review', 'questions.archive',
-  'tests.view', 'tests.create', 'tests.edit', 'tests.publish',
-  'commerce.view', 'payments.manage', 'refunds.manage', 'entitlements.manage', 'packages.manage', 'coupons.manage',
-  'users.view', 'users.manage',
-  'support.view', 'support.manage', 'notifications.send',
-  'analytics.view', 'settings.manage', 'audit.view',
+  // Content
+  'content.view', 'questions.view', 'questions.create', 'questions.edit', 'questions.review',
+  'questions.approve', 'questions.archive', 'generation.use', 'generation.manage',
+  'taxonomy.manage', 'coverage.view', 'coverage.manage', 'challenges.view', 'challenges.manage',
+  'imports.manage', 'studio.use', 'review.approve', 'review.reject', 'review.comment',
+  // Tests
+  'tests.view', 'tests.create', 'tests.edit', 'tests.qa', 'tests.publish',
+  'corrections.view', 'corrections.manage', 'recalculation.manage',
+  'series.manage', 'blueprints.manage',
+  // Commerce
+  'commerce.view', 'payments.manage', 'refunds.request', 'refunds.approve',
+  'entitlements.manage', 'packages.manage', 'coupons.manage',
+  // Users
+  'users.view', 'users.manage', 'support.view', 'support.manage', 'notifications.send',
+  // Operations
+  'jobs.view', 'jobs.manage', 'featureflags.view', 'featureflags.manage',
+  // System
+  'analytics.view', 'reports.export', 'settings.manage', 'branding.manage',
+  'audit.view', 'roles.manage',
 ];
 
 export function getRolePermissions(role: string): string[] {

@@ -96,6 +96,9 @@ export interface TestDraftSection {
 
 export interface TestDraft {
   id?: string;
+  blueprintId?: string;
+  series?: string;
+  instructions?: string;
   basicInfo: {
     name: string;
     examCode: string;

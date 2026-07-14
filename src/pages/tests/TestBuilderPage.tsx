@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ListChecks, ChevronLeft, ChevronRight, Check, Info, Users, FileQuestion, Eye,
@@ -33,6 +33,7 @@ import { useTests, useQuestions } from '@/app/store/selectors';
 import type { TestDraft, TestDraftSection } from '@/app/store/types';
 import { validateDraft, canPublish } from '@/app/store/validation';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { UnsavedChangesDialog } from '@/components/shared/UnsavedChangesDialog';
 
 const STEPS = [
   { label: 'Basic Info', icon: FileText },
@@ -75,6 +76,7 @@ const createInitialDraft = (): TestDraft => ({
 function testToDraft(test: Test): TestDraft {
   return {
     id: test.id,
+    series: test.series,
     basicInfo: {
       name: test.name,
       examCode: test.exam,
@@ -115,8 +117,10 @@ export function TestBuilderPage() {
   // Build the initial draft once: from a saved draft, or from the edited test, or fresh.
   const [initialDraft] = useState<TestDraft>(() => {
     if (editId) {
-      const saved = getTestDraft(draftKey);
+      const saved = getTestDraft(draftKey);           // in-progress edit draft
       if (saved) return saved;
+      const savedFull = getTestDraft('test-saved-' + editId);  // full saved state from last save
+      if (savedFull) return savedFull;
       const existing = tests.find((t) => t.id === editId);
       if (existing) return testToDraft(existing);
     }
@@ -138,7 +142,15 @@ export function TestBuilderPage() {
     return JSON.stringify(strip(draft)) !== JSON.stringify(strip(baseline));
   }, [draft, draftKey, getTestDraft, initialDraft]);
 
-  useUnsavedChanges(isDirty);
+  const { blocker } = useUnsavedChanges(isDirty);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  // When the in-app route blocker triggers, surface the unsaved-changes dialog.
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setShowUnsavedDialog(true);
+    }
+  }, [blocker]);
 
   const lastSaved = getTestDraft(draftKey)?.lastSaved;
 
@@ -236,7 +248,7 @@ export function TestBuilderPage() {
       exam: draft.basicInfo.examCode,
       examName: EXAMS.find((e) => e.code === draft.basicInfo.examCode)?.name ?? draft.basicInfo.examCode,
       type: draft.basicInfo.testType,
-      series: 'Standalone',
+      series: draft.series ?? 'Standalone',
       access: draft.basicInfo.access,
       language: draft.basicInfo.language,
       totalQuestions: draft.pattern.totalQuestions,
@@ -269,6 +281,11 @@ export function TestBuilderPage() {
     } else {
       dispatch({ type: 'ADD_TEST', test: newTest, audit: audit(actionName, 'test', newTest.id, newTest.name, '—', newTest.status, `Test ${actionName.toLowerCase()} via builder`) });
     }
+
+    // Persist the complete draft (sections, description, pattern, selected
+    // questions, etc.) alongside the test so editing it later restores every
+    // field instead of just the flattened Test fields.
+    saveTestDraft('test-saved-' + newTest.id, draft);
 
     deleteTestDraft(draftKey);
     showToast.success('Test saved', `${newTest.name} has been ${actionName.toLowerCase()}.`);
@@ -947,6 +964,24 @@ export function TestBuilderPage() {
           <Button onClick={next}>Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button>
         )}
       </div>
+
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onSave={() => {
+          handleSaveDraft();
+          setShowUnsavedDialog(false);
+          if (blocker.state === 'blocked') blocker.proceed();
+        }}
+        onDiscard={() => {
+          deleteTestDraft(draftKey);
+          setShowUnsavedDialog(false);
+          if (blocker.state === 'blocked') blocker.proceed();
+        }}
+        onContinue={() => {
+          setShowUnsavedDialog(false);
+          if (blocker.state === 'blocked') blocker.reset();
+        }}
+      />
     </div>
   );
 }
