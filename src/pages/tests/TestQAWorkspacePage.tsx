@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   Eye,
   Info,
-  MessageSquare,
   Rocket,
   Send,
   ShieldCheck,
@@ -83,10 +82,12 @@ export function TestQAWorkspacePage() {
     [selectedTestId, tests],
   );
   const draft = selectedTest ? resolveDraft(selectedTest.id, state.testDrafts) : undefined;
-  const assignedIds = draft?.selectedQuestionIds ?? [];
+  const assignedIds = useMemo(() => draft?.selectedQuestionIds ?? [], [draft?.selectedQuestionIds]);
   const selectedQuestions = useMemo(() => {
     const byId = new Map(questions.map((question) => [question.id, question]));
-    return assignedIds.map((id) => byId.get(id)).filter((question): question is NonNullable<typeof question> => Boolean(question));
+    return assignedIds
+      .map((id) => byId.get(id))
+      .filter((question): question is NonNullable<typeof question> => Boolean(question));
   }, [assignedIds, questions]);
   const comments = useTestQAComments(selectedTestId ?? undefined);
   const versions = useTestVersions(selectedTestId ?? undefined);
