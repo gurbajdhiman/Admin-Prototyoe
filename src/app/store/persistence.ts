@@ -1,6 +1,6 @@
 import type { PrototypeState } from './types';
 import { QUESTIONS } from '@/data/questions';
-import { TESTS, TEST_SERIES } from '@/data/tests';
+import { TESTS, TEST_SERIES, BLUEPRINTS } from '@/data/tests';
 import { PACKAGES, ORDERS, COUPONS, ENTITLEMENTS } from '@/data/commerce';
 import { STUDENTS, ADMIN_TEAM, SUPPORT_REQUESTS } from '@/data/users';
 import { NOTIFICATIONS, AUDIT_LOGS } from '@/data/auxiliary';
@@ -126,6 +126,9 @@ export function createDefaultState(): PrototypeState {
     similarityResults: [],
     generationRecipes: [],
     reviewComments: {},
+    blueprints: [...BLUEPRINTS],
+    testVersions: {},
+    testQAComments: {},
     branding: {
       platformName: 'ExamTree',
       tagline: 'Master Your Exam Preparation',

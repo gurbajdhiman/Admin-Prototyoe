@@ -4,6 +4,7 @@ import type {
   Student, SupportRequest, NotificationCampaign, AuditEntry, EntityType,
   StudentNote, SupportComment, GeneratedBatch, TestDraft, BrandingSettings, PrototypeSettings,
   SavedView, QuestionVersion, SimilarityResult, GenerationRecipe, ReviewComment,
+  Blueprint, TestVersion, TestQAComment,
 } from './types';
 import {
   loadState, saveState, createDefaultState, createAuditEntry,
@@ -49,7 +50,12 @@ type Action =
   | { type: 'UPDATE_RECIPE'; recipe: GenerationRecipe; audit?: AuditEntry }
   | { type: 'DELETE_RECIPE'; id: string; audit?: AuditEntry }
   | { type: 'ADD_REVIEW_COMMENT'; questionId: string; comment: ReviewComment }
-  | { type: 'SET_BATCH_STATUS'; batchId: string; status: GeneratedBatch['status']; audit?: AuditEntry };
+  | { type: 'SET_BATCH_STATUS'; batchId: string; status: GeneratedBatch['status']; audit?: AuditEntry }
+  | { type: 'ADD_BLUEPRINT'; blueprint: Blueprint; audit?: AuditEntry }
+  | { type: 'UPDATE_BLUEPRINT'; blueprint: Blueprint; audit?: AuditEntry }
+  | { type: 'DELETE_BLUEPRINT'; id: string; audit?: AuditEntry }
+  | { type: 'ADD_TEST_VERSION'; testId: string; version: TestVersion; audit?: AuditEntry }
+  | { type: 'ADD_TEST_QA_COMMENT'; testId: string; comment: TestQAComment };
 
 function reducer(state: PrototypeState, action: Action): PrototypeState {
   switch (action.type) {
@@ -280,6 +286,35 @@ function reducer(state: PrototypeState, action: Action): PrototypeState {
       return { ...state, generatedBatches };
     }
 
+    case 'ADD_BLUEPRINT': {
+      return { ...state, blueprints: [action.blueprint, ...state.blueprints] };
+    }
+
+    case 'UPDATE_BLUEPRINT': {
+      const blueprints = state.blueprints.map((b) => b.id === action.blueprint.id ? action.blueprint : b);
+      return { ...state, blueprints };
+    }
+
+    case 'DELETE_BLUEPRINT': {
+      const blueprints = state.blueprints.filter((b) => b.id !== action.id);
+      return { ...state, blueprints };
+    }
+
+    case 'ADD_TEST_VERSION': {
+      const existing = state.testVersions[action.testId] ?? [];
+      return { ...state, testVersions: { ...state.testVersions, [action.testId]: [action.version, ...existing] } };
+    }
+
+    case 'ADD_TEST_QA_COMMENT': {
+      return {
+        ...state,
+        testQAComments: {
+          ...state.testQAComments,
+          [action.testId]: [...(state.testQAComments[action.testId] ?? []), action.comment],
+        },
+      };
+    }
+
     default:
       return state;
   }
@@ -313,6 +348,11 @@ interface StoreContextValue {
   deleteRecipe: (id: string) => void;
   addReviewComment: (questionId: string, comment: ReviewComment) => void;
   setBatchStatus: (batchId: string, status: GeneratedBatch['status']) => void;
+  addBlueprint: (blueprint: Blueprint) => void;
+  updateBlueprint: (blueprint: Blueprint) => void;
+  deleteBlueprint: (id: string) => void;
+  addTestVersion: (testId: string, version: TestVersion) => void;
+  addTestQAComment: (testId: string, comment: TestQAComment) => void;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -442,6 +482,30 @@ export function PrototypeStoreProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_BATCH_STATUS', batchId, status, audit: entry });
   }, [audit]);
 
+  const addBlueprint = useCallback((blueprint: Blueprint) => {
+    const entry = audit('BLUEPRINT_CREATED', 'audit' as EntityType, blueprint.id, blueprint.name, '', blueprint.name, `Blueprint created: ${blueprint.name}`);
+    dispatch({ type: 'ADD_BLUEPRINT', blueprint, audit: entry });
+  }, [audit]);
+
+  const updateBlueprint = useCallback((blueprint: Blueprint) => {
+    const entry = audit('BLUEPRINT_UPDATED', 'audit' as EntityType, blueprint.id, blueprint.name, '', blueprint.name, `Blueprint updated: ${blueprint.name}`);
+    dispatch({ type: 'UPDATE_BLUEPRINT', blueprint, audit: entry });
+  }, [audit]);
+
+  const deleteBlueprint = useCallback((id: string) => {
+    const entry = audit('BLUEPRINT_DELETED', 'audit' as EntityType, id, id, '', '', `Blueprint deleted`);
+    dispatch({ type: 'DELETE_BLUEPRINT', id, audit: entry });
+  }, [audit]);
+
+  const addTestVersion = useCallback((testId: string, version: TestVersion) => {
+    const entry = audit('TEST_VERSION_CREATED', 'test', testId, `v${version.versionNumber}`, '', `v${version.versionNumber}`, `Test version ${version.versionNumber} created for ${testId}`);
+    dispatch({ type: 'ADD_TEST_VERSION', testId, version, audit: entry });
+  }, [audit]);
+
+  const addTestQAComment = useCallback((testId: string, comment: TestQAComment) => {
+    dispatch({ type: 'ADD_TEST_QA_COMMENT', testId, comment });
+  }, []);
+
   const checkPermission = useCallback((permission: string) => hasPermission(activePermissions, permission), [activePermissions]);
 
   const value = useMemo<StoreContextValue>(
@@ -473,8 +537,13 @@ export function PrototypeStoreProvider({ children }: { children: ReactNode }) {
       deleteRecipe,
       addReviewComment,
       setBatchStatus,
+      addBlueprint,
+      updateBlueprint,
+      deleteBlueprint,
+      addTestVersion,
+      addTestQAComment,
     }),
-    [state, activeRole, activePermissions, activeAdminName, checkPermission, audit, resetData, setRole, setBranding, setPrototypeSettings, saveTestDraft, deleteTestDraft, getTestDraft, addSavedView, updateSavedView, deleteSavedView, setDefaultSavedView, addQuestionVersion, restoreQuestionVersion, setSimilarityResults, updateSimilarityResult, addRecipe, updateRecipe, deleteRecipe, addReviewComment, setBatchStatus],
+    [state, activeRole, activePermissions, activeAdminName, checkPermission, audit, resetData, setRole, setBranding, setPrototypeSettings, saveTestDraft, deleteTestDraft, getTestDraft, addSavedView, updateSavedView, deleteSavedView, setDefaultSavedView, addQuestionVersion, restoreQuestionVersion, setSimilarityResults, updateSimilarityResult, addRecipe, updateRecipe, deleteRecipe, addReviewComment, setBatchStatus, addBlueprint, updateBlueprint, deleteBlueprint, addTestVersion, addTestQAComment],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

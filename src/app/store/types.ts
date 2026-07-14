@@ -1,7 +1,8 @@
 import type { Question } from '@/data/questions';
 export type { Question };
-import type { Test, TestSeries } from '@/data/tests';
+import type { Test, TestSeries, Blueprint } from '@/data/tests';
 export type { Test, TestSeries };
+export type { Blueprint, BlueprintStatus, BlueprintSection } from '@/data/tests';
 import type { Package, Order, Coupon, Entitlement } from '@/data/commerce';
 export type { Package, Order, Coupon, Entitlement };
 import type { Student, AdminMember, SupportRequest } from '@/data/users';
@@ -178,6 +179,46 @@ export interface ReviewComment {
   content: string;
 }
 
+export interface TestVersion {
+  id: string;
+  testId: string;
+  versionNumber: number;
+  snapshot: Test;
+  publishedBy: string;
+  publishedAt: string;
+  reason: string;
+  isLive: boolean;
+  frozenSections: TestDraftSection[];
+  frozenQuestionIds: string[];
+  frozenInstructions: string;
+  frozenMarkingRules: { marksPerQuestion: number; negativeMarks: number };
+}
+
+export interface TestQAComment {
+  id: string;
+  author: string;
+  timestamp: string;
+  content: string;
+}
+
+export interface AutoAssemblyRule {
+  questionCount: number;
+  difficultyDistribution: { Easy: number; Moderate: number; Hard: number };
+  requiredLanguages: string[];
+  maxReuse: number;
+  excludeRecentlyUsed: boolean;
+  previousYearPercent: number;
+  minQualityScore: number;
+  onlyApproved: boolean;
+  maxPerSubtopic: number;
+}
+
+export interface AutoAssemblyResult {
+  selectedIds: string[];
+  shortages: { constraint: string; needed: number; available: number }[];
+  unmetConstraints: string[];
+}
+
 export interface TestDraftSection {
   id: string;
   name: string;
@@ -216,6 +257,8 @@ export interface TestDraft {
   };
   sections: TestDraftSection[];
   selectedQuestionIds: string[];
+  lockedQuestionIds?: string[];
+  autoAssemblyRule?: AutoAssemblyRule;
   schedule: {
     mode: 'draft' | 'qa' | 'publish-now' | 'scheduled';
     reviewerId?: string;
@@ -297,6 +340,9 @@ export interface PrototypeState {
   similarityResults: SimilarityResult[];
   generationRecipes: GenerationRecipe[];
   reviewComments: Record<string, ReviewComment[]>;
+  blueprints: Blueprint[];
+  testVersions: Record<string, TestVersion[]>;
+  testQAComments: Record<string, TestQAComment[]>;
   branding: BrandingSettings;
   prototypeSettings: PrototypeSettings;
   activeRole: string;

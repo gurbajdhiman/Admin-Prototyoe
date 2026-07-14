@@ -4,6 +4,7 @@ import type {
   Student, SupportRequest, NotificationCampaign, AuditEntry,
   StudentNote, SupportComment, GeneratedBatch, TestDraft, SavedView,
   QuestionVersion, SimilarityResult, GenerationRecipe, ReviewComment,
+  Blueprint, TestVersion, TestQAComment,
 } from './types';
 
 export function useQuestions(): Question[] {
@@ -127,4 +128,20 @@ export function useReviewComments(questionId: string | undefined): ReviewComment
   const store = usePrototypeStore();
   if (!questionId) return [];
   return store.state.reviewComments[questionId] ?? [];
+}
+
+export function useBlueprints(): Blueprint[] {
+  return usePrototypeStore().state.blueprints;
+}
+
+export function useTestVersions(testId: string | undefined): TestVersion[] {
+  const store = usePrototypeStore();
+  if (!testId) return [];
+  return store.state.testVersions[testId] ?? [];
+}
+
+export function useTestQAComments(testId: string | undefined): TestQAComment[] {
+  const store = usePrototypeStore();
+  if (!testId) return [];
+  return store.state.testQAComments[testId] ?? [];
 }

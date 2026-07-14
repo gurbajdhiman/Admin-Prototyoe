@@ -4,7 +4,7 @@ import {
   ListChecks, ChevronLeft, ChevronRight, Check, Info, Users, FileQuestion, Eye,
   ShieldCheck, Rocket, AlertTriangle, CheckCircle2, Monitor, Smartphone,
   Languages, FileText, Upload, Sparkles, Save, LayoutGrid, Trash2, Plus, CalendarClock,
-  RotateCcw,
+  RotateCcw, Lock,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -30,8 +30,9 @@ import { EXAMS, TEST_TYPES, DIFFICULTIES, LANGUAGES, REVIEWERS, SUBJECTS } from 
 import type { Test } from '@/data/tests';
 import { usePrototypeStore } from '@/app/store/PrototypeStore';
 import { useTests, useQuestions } from '@/app/store/selectors';
-import type { TestDraft, TestDraftSection } from '@/app/store/types';
+import type { TestDraft, TestDraftSection, AutoAssemblyRule, AutoAssemblyResult } from '@/app/store/types';
 import { validateDraft, canPublish } from '@/app/store/validation';
+import { runAutoAssembly, explainShortages } from '@/app/store/auto-assembly';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { UnsavedChangesDialog } from '@/components/shared/UnsavedChangesDialog';
 
@@ -144,6 +145,18 @@ export function TestBuilderPage() {
 
   const { blocker } = useUnsavedChanges(isDirty);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [assemblyRule, setAssemblyRule] = useState<AutoAssemblyRule>({
+    questionCount: 100,
+    difficultyDistribution: { Easy: 30, Moderate: 50, Hard: 20 },
+    requiredLanguages: ['English'],
+    maxReuse: 5,
+    excludeRecentlyUsed: false,
+    previousYearPercent: 15,
+    minQualityScore: 70,
+    onlyApproved: true,
+    maxPerSubtopic: 3,
+  });
+  const [assemblyResult, setAssemblyResult] = useState<AutoAssemblyResult | null>(null);
 
   // When the in-app route blocker triggers, surface the unsaved-changes dialog.
   useEffect(() => {
@@ -553,42 +566,42 @@ export function TestBuilderPage() {
           {step === 3 && (
             <div className="space-y-4">
               <h3 className="font-display text-lg font-semibold">Questions</h3>
-              <Tabs defaultValue="manual">
+              <Tabs defaultValue="auto">
                 <TabsList>
+                  <TabsTrigger value="auto"><Sparkles className="mr-1.5 h-4 w-4" /> Auto-Assembly</TabsTrigger>
                   <TabsTrigger value="manual"><FileQuestion className="mr-1.5 h-4 w-4" /> Select Manually</TabsTrigger>
                   <TabsTrigger value="batch"><Users className="mr-1.5 h-4 w-4" /> Approved Batch</TabsTrigger>
-                  <TabsTrigger value="blueprint"><Sparkles className="mr-1.5 h-4 w-4" /> From Blueprint</TabsTrigger>
                   <TabsTrigger value="import"><Upload className="mr-1.5 h-4 w-4" /> Import File</TabsTrigger>
                 </TabsList>
 
+                <TabsContent value="auto">
+                  <AutoAssemblyPanel
+                    draft={draft}
+                    questions={questions}
+                    onApplyResult={(result) => {
+                      setDraft((p) => ({ ...p, selectedQuestionIds: result.selectedIds, autoAssemblyRule: assemblyRule }));
+                      setAssemblyResult(result);
+                      if (result.unmetConstraints.length > 0) {
+                        showToast.warning('Assembly completed with issues', `${result.shortages.length} shortage(s) identified.`);
+                      } else {
+                        showToast.success('Auto-assembly complete', `${result.selectedIds.length} questions selected.`);
+                      }
+                    }}
+                    rule={assemblyRule}
+                    onRuleChange={setAssemblyRule}
+                    result={assemblyResult}
+                  />
+                </TabsContent>
+
                 <TabsContent value="manual">
-                  <div className="rounded-lg border">
-                    <div className="flex items-center justify-between border-b p-3">
-                      <p className="text-sm font-medium">
-                        {draft.selectedQuestionIds.length} of {questions.length} approved questions selected
-                        <span className="ml-2 text-muted-foreground">(target: {draft.pattern.totalQuestions})</span>
-                      </p>
-                      <Button variant="outline" size="sm" onClick={() => setDraft((p) => ({ ...p, selectedQuestionIds: [] }))}>Clear</Button>
-                    </div>
-                    <div className="max-h-[420px] divide-y overflow-y-auto">
-                      {questions.map((q) => {
-                        const selected = draft.selectedQuestionIds.includes(q.id);
-                        return (
-                          <label key={q.id} className="flex cursor-pointer items-start gap-3 p-3 hover:bg-muted/40">
-                            <Checkbox checked={selected} onCheckedChange={() => toggleQuestion(q.id)} className="mt-0.5" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-muted-foreground">{q.id}</span>
-                                <StatusBadge tone="success" className="text-[10px]">{q.status}</StatusBadge>
-                                <span className="text-xs text-muted-foreground">{q.subject}</span>
-                              </div>
-                              <p className="mt-1 line-clamp-2 text-sm text-foreground">{q.stem}</p>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <ManualSelectionPanel
+                    draft={draft}
+                    questions={questions}
+                    onToggle={toggleQuestion}
+                    onClear={() => setDraft((p) => ({ ...p, selectedQuestionIds: [] }))}
+                    onLock={(id) => setDraft((p) => ({ ...p, lockedQuestionIds: [...(p.lockedQuestionIds ?? []), id] }))}
+                    onUnlock={(id) => setDraft((p) => ({ ...p, lockedQuestionIds: (p.lockedQuestionIds ?? []).filter((x) => x !== id) }))}
+                  />
                 </TabsContent>
 
                 <TabsContent value="batch">
@@ -597,19 +610,6 @@ export function TestBuilderPage() {
                     <p className="mt-3 text-sm font-medium">Browse approved question batches</p>
                     <p className="mt-1 text-xs text-muted-foreground">Select a curated batch by subject, chapter, or difficulty.</p>
                     <Button variant="outline" size="sm" className="mt-4" onClick={() => showToast.info('Batch browser', 'Approved batches list would open here.')}>Browse Batches</Button>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="blueprint">
-                  <div className="space-y-4 rounded-lg border p-4">
-                    <div className="space-y-1.5">
-                      <Label>Exam for Blueprint</Label>
-                      <Select value={draft.basicInfo.examCode} onValueChange={(v) => updateBasicInfo('examCode', v)}>
-                        <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
-                        <SelectContent>{EXAMS.map((e) => <SelectItem key={e.code} value={e.code}>{e.name}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={() => showToast.success('Auto-build complete', 'Questions mapped from blueprint pattern.')}><Sparkles className="mr-1.5 h-4 w-4" /> Auto-Build from Blueprint</Button>
                   </div>
                 </TabsContent>
 
@@ -982,6 +982,253 @@ export function TestBuilderPage() {
           if (blocker.state === 'blocked') blocker.reset();
         }}
       />
+    </div>
+  );
+}
+
+function AutoAssemblyPanel({
+  draft, questions, onApplyResult, rule, onRuleChange, result,
+}: {
+  draft: TestDraft;
+  questions: import('@/data/questions').Question[];
+  onApplyResult: (result: AutoAssemblyResult) => void;
+  rule: AutoAssemblyRule;
+  onRuleChange: (rule: AutoAssemblyRule) => void;
+  result: AutoAssemblyResult | null;
+}) {
+  const update = (patch: Partial<AutoAssemblyRule>) => onRuleChange({ ...rule, ...patch });
+  const updateDiff = (key: 'Easy' | 'Moderate' | 'Hard', val: number) =>
+    onRuleChange({ ...rule, difficultyDistribution: { ...rule.difficultyDistribution, [key]: val } });
+
+  const handleRun = () => {
+    const recentlyUsed = questions.filter((q) => q.usageCount > 3).map((q) => q.id);
+    const res = runAutoAssembly(questions, { ...rule, questionCount: draft.pattern.totalQuestions }, recentlyUsed);
+    onApplyResult(res);
+  };
+
+  const totalDiff = rule.difficultyDistribution.Easy + rule.difficultyDistribution.Moderate + rule.difficultyDistribution.Hard;
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4">
+        <h4 className="font-medium text-sm">Auto-Assembly Rules</h4>
+        <p className="mt-1 text-xs text-muted-foreground">Configure constraints for automatic question selection from the question bank.</p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <Label className="text-xs">Question Count (from pattern)</Label>
+            <Input type="number" value={draft.pattern.totalQuestions} disabled className="bg-muted/40" />
+          </div>
+          <div>
+            <Label className="text-xs">Max Reuse Count</Label>
+            <Input type="number" value={rule.maxReuse} onChange={(e) => update({ maxReuse: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Min Quality Score</Label>
+            <Input type="number" value={rule.minQualityScore} onChange={(e) => update({ minQualityScore: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Previous Year %</Label>
+            <Input type="number" value={rule.previousYearPercent} onChange={(e) => update({ previousYearPercent: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Max Per Subtopic</Label>
+            <Input type="number" value={rule.maxPerSubtopic} onChange={(e) => update({ maxPerSubtopic: Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label className="text-xs">Required Languages</Label>
+            <div className="flex flex-wrap gap-1.5 pt-1.5">
+              {LANGUAGES.map((l) => (
+                <label key={l} className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+                  <Checkbox checked={rule.requiredLanguages.includes(l)} onCheckedChange={() => {
+                    const langs = rule.requiredLanguages.includes(l) ? rule.requiredLanguages.filter((x) => x !== l) : [...rule.requiredLanguages, l];
+                    update({ requiredLanguages: langs });
+                  }} />
+                  {l}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label className="text-xs">Easy %</Label>
+            <Input type="number" value={rule.difficultyDistribution.Easy} onChange={(e) => updateDiff('Easy', Number(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-xs">Moderate %</Label>
+            <Input type="number" value={rule.difficultyDistribution.Moderate} onChange={(e) => updateDiff('Moderate', Number(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-xs">Hard %</Label>
+            <Input type="number" value={rule.difficultyDistribution.Hard} onChange={(e) => updateDiff('Hard', Number(e.target.value))} />
+          </div>
+        </div>
+        {totalDiff !== 100 && (
+          <p className="mt-1.5 text-xs text-warning">Difficulty percentages sum to {totalDiff}%, should be 100%.</p>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <label className="flex items-center gap-1.5 text-sm">
+            <Checkbox checked={rule.onlyApproved} onCheckedChange={(v) => update({ onlyApproved: !!v })} /> Only approved questions
+          </label>
+          <label className="flex items-center gap-1.5 text-sm">
+            <Checkbox checked={rule.excludeRecentlyUsed} onCheckedChange={(v) => update({ excludeRecentlyUsed: !!v })} /> Exclude recently used
+          </label>
+        </div>
+
+        <Button className="mt-4" onClick={handleRun}>
+          <Sparkles className="mr-1.5 h-4 w-4" /> Run Auto-Assembly
+        </Button>
+      </Card>
+
+      {result && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-sm">Assembly Results</h4>
+            <StatusBadge tone={result.unmetConstraints.length > 0 ? 'warning' : 'success'} dot>
+              {result.selectedIds.length} selected
+            </StatusBadge>
+          </div>
+
+          {result.shortages.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-warning">Shortages Identified</p>
+              <ul className="mt-1.5 space-y-1">
+                {explainShortages(result).map((s, i) => (
+                  <li key={i} className="text-xs text-muted-foreground">• {s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.unmetConstraints.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-error">Unmet Constraints</p>
+              <ul className="mt-1.5 space-y-1">
+                {result.unmetConstraints.map((c, i) => (
+                  <li key={i} className="text-xs text-muted-foreground">• {c}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.shortages.length === 0 && result.unmetConstraints.length === 0 && (
+            <p className="mt-3 text-xs text-success">All constraints met. {result.selectedIds.length} questions selected successfully.</p>
+          )}
+
+          <p className="mt-3 text-xs text-muted-foreground">You can manually replace locked questions or rerun validation in the Validation step.</p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function ManualSelectionPanel({
+  draft, questions, onToggle, onClear, onLock, onUnlock,
+}: {
+  draft: TestDraft;
+  questions: import('@/data/questions').Question[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
+  onLock: (id: string) => void;
+  onUnlock: (id: string) => void;
+}) {
+  const [filterSubject, setFilterSubject] = useState<string>('all');
+  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const lockedIds = draft.lockedQuestionIds ?? [];
+
+  const filtered = questions.filter((q) => {
+    if (filterSubject !== 'all' && q.subject !== filterSubject) return false;
+    if (filterDifficulty !== 'all' && q.difficulty !== filterDifficulty) return false;
+    if (filterStatus !== 'all' && q.status !== filterStatus) return false;
+    if (search && !q.stem.toLowerCase().includes(search.toLowerCase()) && !q.id.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3">
+        <Input
+          placeholder="Search questions..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 max-w-[200px] text-xs"
+        />
+        <Select value={filterSubject} onValueChange={setFilterSubject}>
+          <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="Subject" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Subjects</SelectItem>
+            {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
+          <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue placeholder="Difficulty" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Levels</SelectItem>
+            {DIFFICULTIES.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="Approved">Approved</SelectItem>
+            <SelectItem value="Draft">Draft</SelectItem>
+            <SelectItem value="Under Review">Under Review</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="ml-auto text-xs text-muted-foreground">
+          {draft.selectedQuestionIds.length} / {draft.pattern.totalQuestions} selected
+        </div>
+        <Button variant="outline" size="sm" className="h-8" onClick={onClear}>Clear</Button>
+      </div>
+
+      <div className="max-h-[420px] divide-y overflow-y-auto rounded-lg border">
+        {filtered.map((q) => {
+          const selected = draft.selectedQuestionIds.includes(q.id);
+          const locked = lockedIds.includes(q.id);
+          const langComplete = draft.basicInfo.language ? q.language.includes(draft.basicInfo.language) : true;
+          return (
+            <div key={q.id} className={cn('flex items-start gap-3 p-3', selected ? 'bg-primary/5' : 'hover:bg-muted/40')}>
+              <Checkbox checked={selected} onCheckedChange={() => onToggle(q.id)} className="mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">{q.id}</span>
+                  <StatusBadge tone="success" className="text-[10px]">{q.status}</StatusBadge>
+                  <span className="text-xs text-muted-foreground">{q.subject}</span>
+                  <StatusBadge tone="info" className="text-[10px]">{q.difficulty}</StatusBadge>
+                </div>
+                <p className="mt-1 line-clamp-2 text-sm text-foreground">{q.stem}</p>
+                <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                  <span>Usage: {q.usageCount}</span>
+                  <span>Quality: {q.validationScore}</span>
+                  <span className={langComplete ? '' : 'text-warning'}>Lang: {langComplete ? 'Complete' : 'Missing ' + draft.basicInfo.language}</span>
+                  {q.usageCount > 5 && <span className="text-warning">High reuse</span>}
+                  {q.source === 'Previous Year' && <span className="text-info">PY</span>}
+                </div>
+              </div>
+              {selected && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => locked ? onUnlock(q.id) : onLock(q.id)}
+                  title={locked ? 'Unlock' : 'Lock'}
+                >
+                  {locked ? <Lock className="h-3.5 w-3.5 text-primary" /> : <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                </Button>
+              )}
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">No questions match the filters.</p>
+        )}
+      </div>
     </div>
   );
 }
