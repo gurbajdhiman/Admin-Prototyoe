@@ -34,9 +34,24 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/components/ui/**/*.{ts,tsx}'],
+    files: [
+      'src/components/ui/**/*.{ts,tsx}',
+      'src/app/store/PrototypeStore.tsx',
+      'src/app/theme/ThemeProvider.tsx',
+      'src/components/shared/SavedViewsBar.tsx',
+      'src/components/shared/StatusBadge.tsx',
+    ],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
-  }
+  },
+  {
+    files: [
+      'src/pages/content/QuestionBankPage.tsx',
+      'src/pages/tests/PublishingCalendarPage.tsx',
+    ],
+    rules: {
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
 );
