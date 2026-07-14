@@ -17,7 +17,7 @@ import { CoveragePlannerPage } from '@/pages/content/CoveragePlannerPage';
 import { TestsPage } from '@/pages/tests/TestsPage';
 import { TestDetailPage } from '@/pages/tests/TestDetailPage';
 import { TestBuilderPage } from '@/pages/tests/TestBuilderPage';
-import { TestQAPage } from '@/pages/tests/TestQAPage';
+import { TestQAWorkspacePage } from '@/pages/tests/TestQAWorkspacePage';
 import { TestSeriesPage } from '@/pages/tests/TestSeriesPage';
 import { ExamBlueprintsPage } from '@/pages/tests/ExamBlueprintsPage';
 import { PublishingCalendarPage } from '@/pages/tests/PublishingCalendarPage';
@@ -63,7 +63,7 @@ const router = createBrowserRouter([
       { path: '/tests', element: <TestsPage /> },
       { path: '/tests/builder', element: <TestBuilderPage /> },
       { path: '/tests/test-builder', element: <Navigate to="/tests/builder" replace /> },
-      { path: '/tests/qa', element: <TestQAPage /> },
+      { path: '/tests/qa', element: <TestQAWorkspacePage /> },
       { path: '/tests/series', element: <TestSeriesPage /> },
       { path: '/tests/blueprints', element: <ExamBlueprintsPage /> },
       { path: '/tests/calendar', element: <PublishingCalendarPage /> },
