@@ -2,7 +2,7 @@ import { usePrototypeStore } from './PrototypeStore';
 import type {
   Question, Test, Package, Order, Coupon, Entitlement,
   Student, SupportRequest, NotificationCampaign, AuditEntry,
-  StudentNote, SupportComment, GeneratedBatch, TestDraft,
+  StudentNote, SupportComment, GeneratedBatch, TestDraft, SavedView,
 } from './types';
 
 export function useQuestions(): Question[] {
@@ -92,4 +92,18 @@ export function useGeneratedBatches(): GeneratedBatch[] {
 
 export function useTestDrafts(): Record<string, TestDraft> {
   return usePrototypeStore().state.testDrafts;
+}
+
+export function useSavedViews(): SavedView[] {
+  return usePrototypeStore().state.savedViews;
+}
+
+export function useSavedViewsByPage(page: string): SavedView[] {
+  const views = usePrototypeStore().state.savedViews;
+  return views.filter((v) => v.page === page);
+}
+
+export function useDefaultSavedView(page: string): SavedView | undefined {
+  const views = usePrototypeStore().state.savedViews;
+  return views.find((v) => v.page === page && v.isDefault);
 }

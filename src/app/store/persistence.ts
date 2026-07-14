@@ -121,6 +121,7 @@ export function createDefaultState(): PrototypeState {
     supportComments: {},
     generatedBatches: [],
     testDrafts: {},
+    savedViews: [],
     branding: {
       platformName: 'ExamTree',
       tagline: 'Master Your Exam Preparation',

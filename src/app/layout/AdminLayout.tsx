@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '@/app/layout/Sidebar';
 import { Topbar } from '@/app/layout/Topbar';
 import { Breadcrumbs } from '@/app/layout/Breadcrumbs';
+import { CommandPalette } from '@/components/shared/CommandPalette';
 
 export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -34,6 +35,8 @@ export function AdminLayout() {
           </div>
         </main>
       </div>
+
+      <CommandPalette />
     </div>
   );
 }

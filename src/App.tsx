@@ -13,6 +13,7 @@ import { ContentReviewPage } from '@/pages/content/ContentReviewPage';
 import { TaxonomyPage } from '@/pages/content/TaxonomyPage';
 import { DiPassageSetsPage } from '@/pages/content/DiPassageSetsPage';
 import { MediaLibraryPage } from '@/pages/content/MediaLibraryPage';
+import { CoveragePlannerPage } from '@/pages/content/CoveragePlannerPage';
 import { TestsPage } from '@/pages/tests/TestsPage';
 import { TestDetailPage } from '@/pages/tests/TestDetailPage';
 import { TestBuilderPage } from '@/pages/tests/TestBuilderPage';
@@ -57,6 +58,7 @@ const router = createBrowserRouter([
       { path: '/content/taxonomy', element: <TaxonomyPage /> },
       { path: '/content/sets', element: <DiPassageSetsPage /> },
       { path: '/content/media', element: <MediaLibraryPage /> },
+      { path: '/content/coverage', element: <CoveragePlannerPage /> },
       { path: '/tests', element: <TestsPage /> },
       { path: '/tests/builder', element: <TestBuilderPage /> },
       { path: '/tests/test-builder', element: <TestBuilderPage /> },

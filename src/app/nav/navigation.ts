@@ -2,7 +2,7 @@ import {
   LayoutDashboard, FileQuestion, Sparkles, ClipboardCheck, Network, Layers,
   Image as ImageIcon, FileText, ListChecks, Box, CalendarClock, ShoppingCart,
   Ticket, KeyRound, Users, ShieldCheck, LifeBuoy, Bell, TrendingUp, BarChart3,
-  Activity, HeartPulse, Settings, Languages, Lock, Palette, ScrollText, Plug,
+  Activity, HeartPulse, Settings, Languages, Lock, Palette, ScrollText, Plug, Target,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -20,6 +20,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Question Bank', path: '/content/questions', icon: FileQuestion, badge: '23' },
       { label: 'Question Studio', path: '/content/studio', icon: Sparkles },
       { label: 'Content Review', path: '/content/review', icon: ClipboardCheck, badge: '18' },
+      { label: 'Coverage Planner', path: '/content/coverage', icon: Target },
       { label: 'Sections & Topics', path: '/content/taxonomy', icon: Network },
       { label: 'DI & Passage Sets', path: '/content/sets', icon: Layers },
       { label: 'Media Library', path: '/content/media', icon: ImageIcon },

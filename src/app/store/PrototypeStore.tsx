@@ -3,6 +3,7 @@ import type {
   PrototypeState, Question, Test, Package, Order, Coupon, Entitlement,
   Student, SupportRequest, NotificationCampaign, AuditEntry, EntityType,
   StudentNote, SupportComment, GeneratedBatch, TestDraft, BrandingSettings, PrototypeSettings,
+  SavedView,
 } from './types';
 import {
   loadState, saveState, createDefaultState, createAuditEntry,
@@ -35,7 +36,11 @@ type Action =
   | { type: 'ADD_GENERATED_BATCH'; batch: GeneratedBatch; audit?: AuditEntry }
   | { type: 'UPDATE_GENERATED_BATCH'; batch: GeneratedBatch }
   | { type: 'SAVE_TEST_DRAFT'; key: string; draft: TestDraft }
-  | { type: 'DELETE_TEST_DRAFT'; key: string };
+  | { type: 'DELETE_TEST_DRAFT'; key: string }
+  | { type: 'ADD_SAVED_VIEW'; view: SavedView; audit?: AuditEntry }
+  | { type: 'UPDATE_SAVED_VIEW'; view: SavedView; audit?: AuditEntry }
+  | { type: 'DELETE_SAVED_VIEW'; id: string; audit?: AuditEntry }
+  | { type: 'SET_DEFAULT_SAVED_VIEW'; page: string; id: string; audit?: AuditEntry };
 
 function reducer(state: PrototypeState, action: Action): PrototypeState {
   switch (action.type) {
@@ -183,6 +188,30 @@ function reducer(state: PrototypeState, action: Action): PrototypeState {
       return { ...state, testDrafts: drafts };
     }
 
+    case 'ADD_SAVED_VIEW': {
+      const views = action.view.isDefault
+        ? state.savedViews.map((v) => v.page === action.view.page ? { ...v, isDefault: false } : v)
+        : state.savedViews;
+      return { ...state, savedViews: [...views, action.view] };
+    }
+
+    case 'UPDATE_SAVED_VIEW': {
+      const savedViews = state.savedViews.map((v) => v.id === action.view.id ? action.view : v);
+      return { ...state, savedViews };
+    }
+
+    case 'DELETE_SAVED_VIEW': {
+      const savedViews = state.savedViews.filter((v) => v.id !== action.id);
+      return { ...state, savedViews };
+    }
+
+    case 'SET_DEFAULT_SAVED_VIEW': {
+      const savedViews = state.savedViews.map((v) =>
+        v.page === action.page ? { ...v, isDefault: v.id === action.id } : v
+      );
+      return { ...state, savedViews };
+    }
+
     default:
       return state;
   }
@@ -203,6 +232,10 @@ interface StoreContextValue {
   saveTestDraft: (key: string, draft: TestDraft) => void;
   deleteTestDraft: (key: string) => void;
   getTestDraft: (key: string) => TestDraft | undefined;
+  addSavedView: (view: SavedView) => void;
+  updateSavedView: (view: SavedView) => void;
+  deleteSavedView: (id: string) => void;
+  setDefaultSavedView: (page: string, id: string) => void;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -269,6 +302,26 @@ export function PrototypeStoreProvider({ children }: { children: ReactNode }) {
 
   const getTestDraft = useCallback((key: string) => state.testDrafts[key], [state.testDrafts]);
 
+  const addSavedView = useCallback((view: SavedView) => {
+    const entry = audit('SAVED_VIEW_CREATED', 'audit' as EntityType, view.id, view.name, '', view.name, `Saved view created for ${view.page}`);
+    dispatch({ type: 'ADD_SAVED_VIEW', view, audit: entry });
+  }, [audit]);
+
+  const updateSavedView = useCallback((view: SavedView) => {
+    const entry = audit('SAVED_VIEW_UPDATED', 'audit' as EntityType, view.id, view.name, '', view.name, `Saved view updated`);
+    dispatch({ type: 'UPDATE_SAVED_VIEW', view, audit: entry });
+  }, [audit]);
+
+  const deleteSavedView = useCallback((id: string) => {
+    const entry = audit('SAVED_VIEW_DELETED', 'audit' as EntityType, id, id, '', '', `Saved view deleted`);
+    dispatch({ type: 'DELETE_SAVED_VIEW', id, audit: entry });
+  }, [audit]);
+
+  const setDefaultSavedView = useCallback((page: string, id: string) => {
+    const entry = audit('SAVED_VIEW_DEFAULT', 'audit' as EntityType, id, page, '', id, `Default saved view set for ${page}`);
+    dispatch({ type: 'SET_DEFAULT_SAVED_VIEW', page, id, audit: entry });
+  }, [audit]);
+
   const checkPermission = useCallback((permission: string) => hasPermission(activePermissions, permission), [activePermissions]);
 
   const value = useMemo<StoreContextValue>(
@@ -287,8 +340,12 @@ export function PrototypeStoreProvider({ children }: { children: ReactNode }) {
       saveTestDraft,
       deleteTestDraft,
       getTestDraft,
+      addSavedView,
+      updateSavedView,
+      deleteSavedView,
+      setDefaultSavedView,
     }),
-    [state, activeRole, activePermissions, activeAdminName, checkPermission, audit, resetData, setRole, setBranding, setPrototypeSettings, saveTestDraft, deleteTestDraft, getTestDraft],
+    [state, activeRole, activePermissions, activeAdminName, checkPermission, audit, resetData, setRole, setBranding, setPrototypeSettings, saveTestDraft, deleteTestDraft, getTestDraft, addSavedView, updateSavedView, deleteSavedView, setDefaultSavedView],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

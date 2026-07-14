@@ -131,6 +131,56 @@ export interface TestDraft {
   lastSaved?: string;
 }
 
+export interface SavedViewFilter {
+  key: string;
+  value: string;
+}
+
+export interface SavedViewState {
+  filters: SavedViewFilter[];
+  sort?: { key: string; dir: 'asc' | 'desc' };
+  visibleColumns: string[];
+  columnOrder: string[];
+  pageSize: number;
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  page: string;
+  scope: 'private' | 'shared';
+  ownerId: string;
+  state: SavedViewState;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CoverageNode {
+  id: string;
+  level: 'family' | 'exam' | 'stage' | 'subject' | 'chapter' | 'topic' | 'subtopic';
+  label: string;
+  examCode?: string;
+  targetCount: number;
+  totalCount: number;
+  generated: number;
+  underReview: number;
+  needsFix: number;
+  approved: number;
+  rejected: number;
+  used: number;
+  unused: number;
+  englishCount: number;
+  hindiCount: number;
+  punjabiCount: number;
+  easyCount: number;
+  moderateCount: number;
+  hardCount: number;
+  coveragePercentage: number;
+  gapCount: number;
+  children: CoverageNode[];
+}
+
 export interface PrototypeState {
   version: number;
   questions: Question[];
@@ -149,6 +199,7 @@ export interface PrototypeState {
   supportComments: Record<string, SupportComment[]>;
   generatedBatches: GeneratedBatch[];
   testDrafts: Record<string, TestDraft>;
+  savedViews: SavedView[];
   branding: BrandingSettings;
   prototypeSettings: PrototypeSettings;
   activeRole: string;

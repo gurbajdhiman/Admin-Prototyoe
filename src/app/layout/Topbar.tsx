@@ -58,8 +58,10 @@ export function Topbar({ onToggleSidebar, onOpenMobile }: TopbarProps) {
 
       <div className="relative ml-1 hidden flex-1 sm:block">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input type="text" placeholder="Search questions, tests, students, orders…  (press /)" className="h-9 w-full max-w-md rounded-md border bg-muted/50 pl-9 pr-3 text-sm outline-none transition-colors focus:bg-background focus:ring-2 focus:ring-ring" />
-        <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:block">/</kbd>
+        <button type="button" onClick={() => { const ev = new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }); window.dispatchEvent(ev); }} className="h-9 w-full max-w-md cursor-text rounded-md border bg-muted/50 pl-9 pr-16 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/70">
+          Search questions, tests, students, orders…
+        </button>
+        <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:block">⌘K</kbd>
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">

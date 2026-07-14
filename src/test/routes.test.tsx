@@ -39,12 +39,12 @@ describe('Routes — page rendering', () => {
   it('renders the Dashboard page at /dashboard', () => {
     renderAt('/dashboard');
     // DashboardPage renders <PageHeader title="Dashboard" /> as an <h1>.
-    expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Command Centre' })).toBeInTheDocument();
   });
 
   it('redirects / to /dashboard', () => {
     renderAt('/');
-    expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Command Centre' })).toBeInTheDocument();
   });
 
   it('renders the Question Bank page at /content/questions', () => {
