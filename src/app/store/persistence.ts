@@ -59,23 +59,17 @@ export const PROTOTYPE_ROLES: { name: string; permissions: string[] }[] = ADMIN_
 }));
 
 export const ALL_PERMISSIONS = [
-  // Content
   'content.view', 'questions.view', 'questions.create', 'questions.edit', 'questions.review',
   'questions.approve', 'questions.archive', 'generation.use', 'generation.manage',
   'taxonomy.manage', 'coverage.view', 'coverage.manage', 'challenges.view', 'challenges.manage',
   'imports.manage', 'studio.use', 'review.approve', 'review.reject', 'review.comment',
-  // Tests
   'tests.view', 'tests.create', 'tests.edit', 'tests.qa', 'tests.publish',
   'corrections.view', 'corrections.manage', 'recalculation.manage',
   'series.manage', 'blueprints.manage',
-  // Commerce
   'commerce.view', 'payments.manage', 'refunds.request', 'refunds.approve',
   'entitlements.manage', 'packages.manage', 'coupons.manage',
-  // Users
   'users.view', 'users.manage', 'support.view', 'support.manage', 'notifications.send',
-  // Operations
   'jobs.view', 'jobs.manage', 'featureflags.view', 'featureflags.manage',
-  // System
   'analytics.view', 'reports.export', 'settings.manage', 'branding.manage',
   'audit.view', 'roles.manage',
 ];
@@ -86,6 +80,15 @@ export function getRolePermissions(role: string): string[] {
 
 export function hasPermission(perms: string[], permission: string): boolean {
   return perms.includes('all') || perms.includes(permission);
+}
+
+export function dedupeAuditEntries(entries: AuditEntry[]): AuditEntry[] {
+  const seen = new Set<string>();
+  return entries.filter((entry) => {
+    if (seen.has(entry.id)) return false;
+    seen.add(entry.id);
+    return true;
+  });
 }
 
 export function createDefaultState(): PrototypeState {
@@ -155,7 +158,10 @@ export function loadState(): PrototypeState {
     if (!Array.isArray(parsed.questions) || !Array.isArray(parsed.tests)) {
       return createDefaultState();
     }
-    return parsed;
+    return {
+      ...parsed,
+      auditLogs: dedupeAuditEntries(Array.isArray(parsed.auditLogs) ? parsed.auditLogs : []),
+    };
   } catch {
     return createDefaultState();
   }
@@ -163,7 +169,11 @@ export function loadState(): PrototypeState {
 
 export function saveState(state: PrototypeState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const normalizedState: PrototypeState = {
+      ...state,
+      auditLogs: dedupeAuditEntries(state.auditLogs),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedState));
   } catch {
     // storage full or unavailable — silently ignore in prototype
   }
