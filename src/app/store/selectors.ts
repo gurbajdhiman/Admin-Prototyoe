@@ -1,4 +1,5 @@
 import { usePrototypeStore } from './PrototypeStore';
+import { dedupeAuditEntries } from './persistence';
 import type {
   Question, Test, Package, Order, Coupon, Entitlement,
   Student, SupportRequest, NotificationCampaign, AuditEntry,
@@ -73,11 +74,12 @@ export function useNotifications(): NotificationCampaign[] {
 }
 
 export function useAuditLogs(): AuditEntry[] {
-  return usePrototypeStore().state.auditLogs;
+  return dedupeAuditEntries(usePrototypeStore().state.auditLogs);
 }
 
 export function useAuditByEntity(entityId: string): AuditEntry[] {
-  return usePrototypeStore().state.auditLogs.filter((a) => a.entityId === entityId || a.entityId.includes(entityId));
+  const auditLogs = dedupeAuditEntries(usePrototypeStore().state.auditLogs);
+  return auditLogs.filter((a) => a.entityId === entityId || a.entityId.includes(entityId));
 }
 
 export function useStudentNotes(studentId: string): StudentNote[] {
