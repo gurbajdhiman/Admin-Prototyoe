@@ -47,6 +47,21 @@ npm run dev
 - In-app unsaved-change protection
 - Test QA workspace with immutable publication versions
 
+## Stabilization work
+
+The current stabilization pass adds:
+
+- one canonical Test QA implementation
+- route-level lazy loading for Question Studio, Coverage Planner, Test Builder, Test QA, and analytics workspaces
+- a shared route-loading fallback
+- canonical `/tests/builder` routing with redirect from `/tests/test-builder`
+- audit-log normalization during save, load, and selector reads
+- audit persistence tests
+- TypeScript pinned to `5.5.4`, which is supported by the current TypeScript ESLint parser
+- lint configuration scoped so Fast Refresh warnings are only applied where they are meaningful
+
+After pulling these changes, run `npm install` so the lockfile and local TypeScript installation match `package.json`.
+
 ## Test QA repair
 
 The Test QA workspace is available at:
@@ -137,5 +152,6 @@ The legacy route `/tests/test-builder` redirects to the canonical `/tests/builde
 - Frontend permission checks are not security controls.
 - Payment, notification, generation, analytics, and system-health data are simulated.
 - Production audit records must be generated authoritatively by the backend.
+- Audit normalization protects prototype storage and views; the future backend must write each audit event transactionally exactly once.
 - A future backend must store explicit test-question assignments and immutable question-version references.
 - Parts covering challenges, corrections, imports, background jobs, feature flags, advanced commerce, and final backend specifications are still pending.
